@@ -1,75 +1,78 @@
 import random
 import copy
+from functools import partial
+import operator
+
+
+def reset_mutation(data, rate, generate):
+    for index in range(len(data)):
+        if random.random() < rate:
+            data[index] = generate()
 
 
 class Node(object):
-    def __init__(self, max_arity, function_list, prev_nodes):
-        self.connections = [random.randint(0, prev_nodes - 1)
-                            for _ in range(max_arity)]
+    def __init__(self, max_arity, function_list, input_length, prev_nodes):
+        self.random_connection = partial(random.randint,
+                                         - input_length, prev_nodes - 1)
+        self.connections = [self.random_connection() for _ in range(max_arity)]
         self.function = random.choice(function_list)
-        self.prev_nodes = prev_nodes
         self.function_list = function_list
 
     def mutate(self, rate):
-        for i in range(len(self.connections)):
-            if random.random() < rate:
-                self.connections[i] = random.randint(0, self.prev_nodes - 1)
+        reset_mutation(self.connections, rate, self.random_connection)
 
         if random.random() < rate:
             self.function = random.choice(self.function_list)
 
 
-class Graph(object):
+class Individual(object):
     def __init__(self, graph_length, input_length, output_length,
                   max_arity, function_list):
-        self.function_list = function_list
+        self.random_output = partial(random.randint,
+                                     - input_length, graph_length - 1)
+        #self.function_list = function_list
         self.input_length = input_length
-        self.nodes = [Node(max_arity, function_list, index + input_length)
+        self.nodes = [Node(max_arity, function_list, input_length, index)
                       for index in range(graph_length)]
-        # Consider a better representation for input nodes than "None"
-        self.nodes = [None] * input_length + self.nodes
-        self.outputs = [random.randint(0, len(self.nodes) - 1)
-                        for _ in range(output_length)]
-        self.scratch = [None] * len(self.nodes)
+        self.outputs = [self.random_output() for _ in range(output_length)]
         self.determine_active_nodes()
+
+    def make_scratch(self):
+        return [None] * (len(self.nodes) + self.input_length)
 
     def determine_active_nodes(self):
         self.active = set(self.outputs)
 
-        for index in range(len(self.nodes) - 1, self.input_length - 1, -1):
+        for i, node in enumerate(reversed(self.nodes)):
+            index = len(self.nodes) - i - 1
             if index in self.active:
-                for connection in self.nodes[index].connections:
+                for connection in node.connections:
                     self.active.add(connection)
-        self.active = sorted(self.active)[self.input_length:]
+        self.active = sorted(self.active)
+        self.active = [acting for acting in self.active if acting >= 0]
+        print self.active
 
-    def evaluate(self, inputs):
-        self.scratch[:len(inputs)] = inputs
+    def evaluate(self, inputs, scratch):
+        # loads the inputs in reverse at the end of the array
+        scratch[-len(inputs):] = inputs[::-1]
         for index in self.active:
             working = self.nodes[index]
-            args = [self.scratch[conn] for conn in working.connections]
-            function = self.function_list[working.function_index]
-            self.scratch[index] = function(*args)
-        return [self.scratch[output] for output in self.outputs]
+            args = [scratch[conn] for conn in working.connections]
+            scratch[index] = working.function(*args)
+        print scratch
+        return [scratch[output] for output in self.outputs]
 
     def mutate(self, rate):
         mutant = copy.deepcopy(self)
-        for node in mutant.graph.nodes:
-            node.mutate()
+        for node in mutant.nodes:
+            node.mutate(rate)
 
-        for index in range(len(self.outputs)):
-            if random.random() < rate:
-                self.outputs[index] = random.randint(0, len(self.nodes) - 1)
+        reset_mutation(mutant.outputs, rate, mutant.random_output)
+        mutant.determine_active_nodes()
+        return mutant
 
     def __str__(self):
-        nodes = ' '.join(self.function_list[node.function_index].__name__ +
-                         str(node.connections) for node in self.nodes if node)
+        nodes = ' '.join("%i %s%s" % (index, node.function.__name__,
+                         str(node.connections))
+                         for index, node in enumerate(self.nodes))
         return nodes + str(self.outputs)
-
-
-class Individual(object):
-    def __init__(self, graph_length, input_length, output_length,
-                  max_arity, function_list):
-        self.graph = Graph(graph_length, input_length, output_length,
-                           max_arity, function_list)
-
-
