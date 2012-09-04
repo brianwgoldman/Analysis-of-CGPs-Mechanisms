@@ -1,7 +1,6 @@
 import random
 import copy
 from functools import partial
-import operator
 
 
 def reset_mutation(data, rate, generate):
@@ -28,9 +27,8 @@ class Node(object):
 class Individual(object):
     def __init__(self, graph_length, input_length, output_length,
                   max_arity, function_list):
-        self.random_output = partial(random.randint,
-                                     - input_length, graph_length - 1)
-        #self.function_list = function_list
+        self.random_output = partial(random.randint, -input_length,
+                                     graph_length - 1)
         self.input_length = input_length
         self.nodes = [Node(max_arity, function_list, input_length, index)
                       for index in range(graph_length)]
@@ -50,7 +48,6 @@ class Individual(object):
                     self.active.add(connection)
         self.active = sorted(self.active)
         self.active = [acting for acting in self.active if acting >= 0]
-        print self.active
 
     def evaluate(self, inputs, scratch):
         # loads the inputs in reverse at the end of the array
