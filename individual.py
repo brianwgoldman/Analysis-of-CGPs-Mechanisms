@@ -1,6 +1,7 @@
 import random
 import copy
 from functools import partial
+from util import diff_count
 
 
 def reset_mutation(data, rate, generate):
@@ -67,6 +68,15 @@ class Individual(object):
         reset_mutation(mutant.outputs, rate, mutant.random_output)
         mutant.determine_active_nodes()
         return mutant
+
+    def asymmetric_phenotypic_difference(self, other):
+        differences = diff_count(self.outputs, other.outputs)
+        for active in self.active:
+            differences += diff_count(self.nodes[active].connections,
+                                      other.nodes[active].connections)
+            differences += (self.nodes[active].function !=
+                            other.nodes[active].function)
+        return differences
 
     def __str__(self):
         nodes = ' '.join("%i %s%s" % (index, node.function.__name__,

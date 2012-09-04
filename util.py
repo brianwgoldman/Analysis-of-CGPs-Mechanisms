@@ -1,3 +1,6 @@
+from itertools import izip
+
+
 def memoize(wraps):
     seen = {}
 
@@ -20,3 +23,7 @@ def arity_control(number):
         at_call.arity = number
         return at_call
     return wrap
+
+
+def diff_count(data1, data2):
+    return sum(x != y for x, y in izip(data1, data2))
