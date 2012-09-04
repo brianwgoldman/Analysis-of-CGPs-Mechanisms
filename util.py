@@ -1,4 +1,5 @@
 from itertools import izip
+from inspect import getargspec
 
 
 def memoize(wraps):
@@ -27,3 +28,12 @@ def arity_control(number):
 
 def diff_count(data1, data2):
     return sum(x != y for x, y in izip(data1, data2))
+
+
+def dict_call(function, overloaded):
+    arg_info = getargspec(function)
+    if arg_info.kwargs:
+        return function(**overloaded)
+    else:
+        return function(**dict((key, overloaded[key]) for key in arg_info.args
+                               if key in overloaded))

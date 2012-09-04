@@ -1,7 +1,7 @@
 import random
 import copy
 from functools import partial
-from util import diff_count
+from util import diff_count, dict_call
 
 
 def reset_mutation(data, rate, generate):
@@ -12,8 +12,8 @@ def reset_mutation(data, rate, generate):
 
 class Node(object):
     def __init__(self, max_arity, function_list, input_length, prev_nodes):
-        self.random_connection = partial(random.randint,
-                                         - input_length, prev_nodes - 1)
+        self.random_connection = partial(random.randint, -input_length,
+                                         prev_nodes - 1)
         self.connections = [self.random_connection() for _ in range(max_arity)]
         self.function = random.choice(function_list)
         self.function_list = function_list
@@ -83,3 +83,9 @@ class Individual(object):
                          str(node.connections))
                          for index, node in enumerate(self.nodes))
         return nodes + str(self.outputs)
+
+
+class Population(object):
+    def __init__(self, config):
+        self.individuals = [dict_call(Individual, config)
+                            for _ in range(config['popSize'])]
