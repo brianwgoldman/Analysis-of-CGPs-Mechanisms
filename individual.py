@@ -1,7 +1,8 @@
 import random
 import copy
+import sys
 from functools import partial
-from util import diff_count, dict_call
+from util import diff_count, binary_counter
 
 
 def reset_mutation(data, rate, generate):
@@ -27,17 +28,18 @@ class Node(object):
 
 class Individual(object):
     def __init__(self, graph_length, input_length, output_length,
-                  max_arity, function_list):
+                  max_arity, function_list, **_):
         self.random_output = partial(random.randint, -input_length,
                                      graph_length - 1)
         self.input_length = input_length
         self.nodes = [Node(max_arity, function_list, input_length, index)
                       for index in range(graph_length)]
+        # TODO According to crossover.pdf, outputs initialize to last nodes
         self.outputs = [self.random_output() for _ in range(output_length)]
         self.determine_active_nodes()
-
-    def make_scratch(self):
-        return [None] * (len(self.nodes) + self.input_length)
+        # If memory problems persist, make this globally shared
+        self.scratch = [None] * (len(self.nodes) + self.input_length)
+        self.fitness = -sys.maxint
 
     def determine_active_nodes(self):
         self.active = set(self.outputs)
@@ -50,15 +52,14 @@ class Individual(object):
         self.active = sorted(self.active)
         self.active = [acting for acting in self.active if acting >= 0]
 
-    def evaluate(self, inputs, scratch):
+    def evaluate(self, inputs):
         # loads the inputs in reverse at the end of the array
-        scratch[-len(inputs):] = inputs[::-1]
+        self.scratch[-len(inputs):] = inputs[::-1]
         for index in self.active:
             working = self.nodes[index]
-            args = [scratch[conn] for conn in working.connections]
-            scratch[index] = working.function(*args)
-        print scratch
-        return [scratch[output] for output in self.outputs]
+            args = [self.scratch[conn] for conn in working.connections]
+            self.scratch[index] = working.function(*args)
+        return [self.scratch[output] for output in self.outputs]
 
     def mutate(self, rate):
         mutant = copy.deepcopy(self)
@@ -69,7 +70,7 @@ class Individual(object):
         mutant.determine_active_nodes()
         return mutant
 
-    def asymmetric_phenotypic_difference(self, other):
+    def asym_phenotypic_difference(self, other):
         differences = diff_count(self.outputs, other.outputs)
         for active in self.active:
             differences += diff_count(self.nodes[active].connections,
@@ -84,8 +85,93 @@ class Individual(object):
                          for index, node in enumerate(self.nodes))
         return nodes + str(self.outputs)
 
+    def __lt__(self, other):
+        return self.fitness < other.fitness
 
-class Population(object):
-    def __init__(self, config):
-        self.individuals = [dict_call(Individual, config)
-                            for _ in range(config['popSize'])]
+    def __le__(self, other):
+        return self.fitness <= other.fitness
+
+
+def generate(config):
+    parent = Individual(**config)
+    yield parent
+    while True:
+        mutants = [parent.mutate(config['mutation_rate'])
+                   for _ in range(config['off_size'])]
+        for index, mutant in enumerate(mutants):
+            prev = mutant
+            if config['speed'] != 'normal':
+                change = parent.asym_phenotypic_difference(mutant)
+                if change == 0:
+                    if config['speed'] == 'no_reeval':
+                        continue
+                    if config['speed'] == 'mutate_until_change':
+                        while change == 0:
+                            prev = mutant
+                            mutant = prev.mutate(config['mutation_rate'])
+                            change = parent.asym_phenotypic_difference(mutant)
+            yield mutant
+            if config['speed'] == 'mutate_until_change':
+                # If the mutant is strickly worse, use the last equivalent
+                mutants[index] = prev if mutant < parent else mutant
+        best_child = max(mutants)
+        if parent <= best_child:
+            parent = best_child
+
+
+def constmaker(value):
+    def inner(*args, **kwargs):
+        return value
+    return inner
+
+
+def protectdiv(num, denom):
+    try:
+        return float(num) / denom
+    except ZeroDivisionError:
+        return num
+
+
+def nor(p, q):
+    return not (p or q)
+
+
+def nand(p, q):
+    return not (p and q)
+
+import operator
+required = {'graph_length': 4000, 'input_length': 3,
+            'output_length': 1, 'max_arity': 2,
+            'function_list': [operator.and_, operator.or_, nor, nand],
+            'off_size': 4,
+            'speed': sys.argv[1],
+            'mutation_rate': .02}
+
+
+def target(z):
+    return (sum(z) + 1) % 2
+
+def main():
+    xs = list(binary_counter(3))
+    ys = map(target, xs)
+    tests = zip(xs, ys)
+
+    data = []
+    for i in range(100):
+        best = Individual(**required)
+        for evals, individual in enumerate(generate(required)):
+            raw = [abs(individual.evaluate(x)[0] - y) for x, y in tests]
+            fit = -sum(raw)
+            individual.fitness = fit
+            if best < individual:
+                best = individual
+                print evals, best.fitness
+            if evals > 6000 or best.fitness == 0:
+                print '\t', evals, best.fitness
+                data.append(evals)
+                break
+
+    print sum(data) / float(len(data))
+
+import cProfile
+cProfile.run("main()", sort=2)
