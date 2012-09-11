@@ -1,89 +1,83 @@
 import random
-import copy
 import sys
-from functools import partial
+from copy import copy
 from util import diff_count, binary_counter
-
-
-def reset_mutation(data, rate, generate):
-    for index in range(len(data)):
-        if random.random() < rate:
-            data[index] = generate()
-
-
-class Node(object):
-    def __init__(self, max_arity, function_list, input_length, prev_nodes):
-        self.random_connection = partial(random.randint, -input_length,
-                                         prev_nodes - 1)
-        self.connections = [self.random_connection() for _ in range(max_arity)]
-        self.function = random.choice(function_list)
-        self.function_list = function_list
-
-    def mutate(self, rate):
-        reset_mutation(self.connections, rate, self.random_connection)
-
-        if random.random() < rate:
-            self.function = random.choice(self.function_list)
 
 
 class Individual(object):
     def __init__(self, graph_length, input_length, output_length,
                   max_arity, function_list, **_):
-        self.random_output = partial(random.randint, -input_length,
-                                     graph_length - 1)
+        self.node_step = max_arity + 1
         self.input_length = input_length
-        self.nodes = [Node(max_arity, function_list, input_length, index)
-                      for index in range(graph_length)]
-        # TODO According to crossover.pdf, outputs initialize to last nodes
-        self.outputs = [self.random_output() for _ in range(output_length)]
+        self.graph_length = graph_length
+        self.function_list = function_list
+        self.output_length = output_length
+        self.genes = [self.random_gene(index) for index in
+                      range(graph_length * self.node_step + output_length)]
         self.determine_active_nodes()
         # If memory problems persist, make this globally shared
-        self.scratch = [None] * (len(self.nodes) + self.input_length)
+        self.scratch = [None] * (graph_length + self.input_length)
         self.fitness = -sys.maxint
 
-    def determine_active_nodes(self):
-        self.active = set(self.outputs)
+    def random_gene(self, index):
+        node_number = index // self.node_step
+        gene_number = index % self.node_step
+        if node_number >= self.graph_length:
+            node_number = self.graph_length
+            gene_number = -1
 
-        for i, node in enumerate(reversed(self.nodes)):
-            index = len(self.nodes) - i - 1
-            if index in self.active:
-                for connection in node.connections:
-                    self.active.add(connection)
-        self.active = sorted(self.active)
-        self.active = [acting for acting in self.active if acting >= 0]
+        if gene_number == 0:
+            return random.choice(self.function_list)
+        else:
+            return random.randint(-self.input_length, node_number - 1)
+
+    def copy(self):
+        # WARNING individuals are shallow copied except for things added here
+        new = copy(self)
+        new.genes = list(self.genes)
+        return new
+
+    def connections(self, node_index):
+        node_start = self.node_step * node_index
+        return self.genes[node_start + 1: node_start + self.node_step]
+
+    def determine_active_nodes(self):
+        self.active = set(self.genes[-self.output_length:])
+
+        for node_index in reversed(range(self.graph_length)):
+            if node_index in self.active:
+                # add all of the connection genes for this node
+                self.active.update(self.connections(node_index))
+        self.active = sorted([acting for acting in self.active if acting >= 0])
 
     def evaluate(self, inputs):
-        # loads the inputs in reverse at the end of the array
+        self.scratch = [None] * (self.graph_length + self.input_length)
         self.scratch[-len(inputs):] = inputs[::-1]
-        for index in self.active:
-            working = self.nodes[index]
-            args = [self.scratch[conn] for conn in working.connections]
-            self.scratch[index] = working.function(*args)
-        return [self.scratch[output] for output in self.outputs]
+        for node_index in self.active:
+            function = self.genes[node_index * self.node_step]
+            args = [self.scratch[con] for con in self.connections(node_index)]
+            self.scratch[node_index] = function(*args)
+        return [self.scratch[output]
+                for output in self.genes[-self.output_length:]]
 
     def mutate(self, rate):
-        mutant = copy.deepcopy(self)
-        for node in mutant.nodes:
-            node.mutate(rate)
-
-        reset_mutation(mutant.outputs, rate, mutant.random_output)
+        mutant = self.copy()
+        for index in range(len(mutant.genes)):
+            if random.random() < rate:
+                mutant.genes[index] = mutant.random_gene(index)
         mutant.determine_active_nodes()
         return mutant
 
     def asym_phenotypic_difference(self, other):
-        differences = diff_count(self.outputs, other.outputs)
-        for active in self.active:
-            differences += diff_count(self.nodes[active].connections,
-                                      other.nodes[active].connections)
-            differences += (self.nodes[active].function !=
-                            other.nodes[active].function)
-        return differences
-
-    def __str__(self):
-        nodes = ' '.join("%i %s%s" % (index, node.function.__name__,
-                         str(node.connections))
-                         for index, node in enumerate(self.nodes))
-        return nodes + str(self.outputs)
+        count = diff_count(self.genes[-self.output_length:],
+                           other.genes[-self.output_length:])
+        for node_index in self.active:
+            index = node_index * self.node_step
+            count += diff_count(self.connections(node_index),
+                                other.connections(node_index))
+            count += (self.genes[index] !=
+                      other.genes[index])
+        return count
 
     def __lt__(self, other):
         return self.fitness < other.fitness
@@ -151,13 +145,14 @@ required = {'graph_length': 4000, 'input_length': 3,
 def target(z):
     return (sum(z) + 1) % 2
 
+
 def main():
     xs = list(binary_counter(3))
     ys = map(target, xs)
     tests = zip(xs, ys)
 
     data = []
-    for i in range(100):
+    for _ in range(100):
         best = Individual(**required)
         for evals, individual in enumerate(generate(required)):
             raw = [abs(individual.evaluate(x)[0] - y) for x, y in tests]
@@ -166,12 +161,12 @@ def main():
             if best < individual:
                 best = individual
                 print evals, best.fitness
-            if evals > 6000 or best.fitness == 0:
+            if evals >= 5000 or best.fitness == 0:
                 print '\t', evals, best.fitness
                 data.append(evals)
                 break
 
-    print sum(data) / float(len(data))
+    print sum(data) / float(len(data)), sum(data)
 
-import cProfile
-cProfile.run("main()", sort=2)
+random.seed(int(sys.argv[2]))
+main()
