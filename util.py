@@ -1,54 +1,49 @@
 from itertools import izip
-from inspect import getargspec
-import itertools
-
-
-def memoize(wraps):
-    seen = {}
-
-    def inner(*args):
-        try:
-            return seen[args]
-        except KeyError:
-            seen[args] = wraps(*args)
-            return seen[args]
-    return inner
-
-
-def arity_control(number):
-    def wrap(wrapped):
-        def at_call(*args):
-            if len(args) != number:
-                raise TypeError("Arity control requires %i arguments, got %i" %
-                                (number, len(args)))
-            return wrapped(*args)
-        at_call.arity = number
-        return at_call
-    return wrap
+import json
+import os
+import math
 
 
 def diff_count(data1, data2):
     return sum(x != y for x, y in izip(data1, data2))
 
 
-def overloaded(wraps):
-    required = getargspec(wraps)[0]
-
-    def inner(*args, **kwargs):
-        used = dict((key, kwargs[key]) for key in required[len(args):]
-                    if key in kwargs)
-        return wraps(*args, **used)
-    return inner
+def load_configurations(filenames, file_method=open):
+    result = {}
+    for filename in filenames:
+        with file_method(filename, 'r') as f:
+            result.update(json.load(f))
+    return result
 
 
-def binary_counter(bits):
+def save_configuration(filename, data, file_method=open):
+    with file_method(filename, 'w') as f:
+        json.dump(data, f)
+
+
+def save_list(filename, data, file_method=open):
+    with file_method(filename, 'w') as f:
+        f.write('[' + os.linesep)
+        for lineNumber, line in enumerate(data):
+            json.dump(line, f)
+            if lineNumber != len(data) - 1:
+                f.write(",")
+            f.write(os.linesep)
+        f.write(']' + os.linesep)
+
+
+def meanstd(data):
     '''
-    Creates a generator that will count through all possible values for a set
-    number of bits.  Returned in counting order.  For instance,
-    ``binaryCounter(3)`` will yield, 000, 001, 010, 011 ... 110, 111.
+    Returns the mean and standard deviation of the given data.
 
     Parameters:
 
-    - ``bits`` The number of bits in the binary counter.
+    - ``data``: The data to find the mean and standard deviation of.
     '''
-    return itertools.product((0, 1), repeat=bits)
+    try:
+        mean = float(sum(data)) / len(data)
+        std = math.sqrt(sum([(value - mean) ** 2 for value in data])
+                        / len(data))
+        return mean, std
+    except (ZeroDivisionError, TypeError):
+        return 0, 0

@@ -1,7 +1,7 @@
 import random
 import sys
 from copy import copy
-from util import diff_count, binary_counter
+from util import diff_count
 
 
 class Individual(object):
@@ -15,7 +15,7 @@ class Individual(object):
         self.genes = [self.random_gene(index) for index in
                       range(graph_length * self.node_step + output_length)]
         self.determine_active_nodes()
-        # If memory problems persist, make this globally shared
+        # If memory problems arise, make this globally shared
         self.scratch = [None] * (graph_length + self.input_length)
         self.fitness = -sys.maxint
 
@@ -111,62 +111,3 @@ def generate(config):
         best_child = max(mutants)
         if parent <= best_child:
             parent = best_child
-
-
-def constmaker(value):
-    def inner(*args, **kwargs):
-        return value
-    return inner
-
-
-def protectdiv(num, denom):
-    try:
-        return float(num) / denom
-    except ZeroDivisionError:
-        return num
-
-
-def nor(p, q):
-    return not (p or q)
-
-
-def nand(p, q):
-    return not (p and q)
-
-import operator
-required = {'graph_length': 4000, 'input_length': 3,
-            'output_length': 1, 'max_arity': 2,
-            'function_list': [operator.and_, operator.or_, nor, nand],
-            'off_size': 4,
-            'speed': sys.argv[1],
-            'mutation_rate': .02}
-
-
-def target(z):
-    return (sum(z) + 1) % 2
-
-
-def main():
-    xs = list(binary_counter(3))
-    ys = map(target, xs)
-    tests = zip(xs, ys)
-
-    data = []
-    for _ in range(100):
-        best = Individual(**required)
-        for evals, individual in enumerate(generate(required)):
-            raw = [abs(individual.evaluate(x)[0] - y) for x, y in tests]
-            fit = -sum(raw)
-            individual.fitness = fit
-            if best < individual:
-                best = individual
-                print evals, best.fitness
-            if evals >= 5000 or best.fitness == 0:
-                print '\t', evals, best.fitness
-                data.append(evals)
-                break
-
-    print sum(data) / float(len(data)), sum(data)
-
-random.seed(int(sys.argv[2]))
-main()
