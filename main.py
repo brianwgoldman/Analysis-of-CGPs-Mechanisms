@@ -101,9 +101,10 @@ if __name__ == '__main__':
 
     try:
         raw_results = all_runs(config)
-        print sorted(combine_results(raw_results).items())
+        combined = combine_results(raw_results).items()
+        print sorted(combined)
         if args.output_results != None:
-            util.save_list(args.output_results, raw_results)
+            util.save_list(args.output_results, [combined] + raw_results)
         if args.output_config != None:
             util.save_configuration(args.output_config, config)
     except KeyError as e:
