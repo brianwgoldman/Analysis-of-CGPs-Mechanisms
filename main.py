@@ -69,6 +69,10 @@ if __name__ == '__main__':
                         help='Use the specified mutation rate.')
     parser.add_argument('-p', dest='problem', type=str,
                         help='Use the specified problem.')
+    parser.add_argument('-s', dest='speed', type=str,
+                        help='Specifies if evolution should should avoid' +
+                        ' duplicated evaluations.  Valid settings are: ' +
+                        'normal, no_reeval, mutate_until_change')
     parser.add_argument('-c', dest='output_config', type=str,
                         help='Outputs a single configuration file containing' +
                         ' the entire configuration used in this run')
