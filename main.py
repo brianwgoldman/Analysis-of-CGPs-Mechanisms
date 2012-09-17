@@ -17,7 +17,8 @@ def one_run(evaluator, config):
             best.fitness >= config['max_fitness']):
             break
     return {'fitness': best.fitness, 'evals': last_improved,
-            'success': best.fitness >= config['max_fitness']}
+            'success': best.fitness >= config['max_fitness'],
+            'phenotype': len(best.active)}
 
 
 def all_runs(config):
@@ -28,9 +29,10 @@ def all_runs(config):
     results = []
     try:
         for run in range(config['runs']):
-            if config['verbose']:
-                print "Starting Run", run + 1
-            results.append(one_run(evaluator, config))
+            print "Starting Run", run + 1
+            result = one_run(evaluator, config)
+            print result
+            results.append(result)
     except KeyboardInterrupt:
         print "Interrupted"
     return results
