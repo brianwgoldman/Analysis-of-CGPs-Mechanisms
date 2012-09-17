@@ -67,6 +67,39 @@ class Individual(object):
         mutant.determine_active_nodes()
         return mutant
 
+    def reorder(self):
+        dependencies = {node_index: set(self.connections(node_index))
+                        for node_index in range(self.graph_length)}
+        added = set(range(-self.input_length, 0))
+
+        def available():
+            return [node_index
+                    for node_index, depends_on in dependencies.iteritems()
+                    if depends_on <= added]
+        new_order = {i: i for i in range(-self.input_length, 0)}
+        counter = 0
+        while dependencies:
+            #to_add = random.choice(available())
+            choices = available()
+            to_add = random.choice(choices)
+            new_order[to_add] = counter
+            counter += 1
+            del dependencies[to_add]
+            added.add(to_add)
+
+        mutant = self.copy()
+        for node_index in range(self.graph_length):
+            start = new_order[node_index] * self.node_step
+            mutant.genes[start] = self.genes[node_index * self.node_step]
+            connections = [new_order[conn]
+                           for conn in self.connections(node_index)]
+            mutant.genes[start + 1:start + self.node_step] = connections
+        length = len(self.genes)
+        for index in range(length - self.output_length, length):
+            mutant.genes[index] = new_order[self.genes[index]]
+        mutant.determine_active_nodes()
+        return mutant
+
     def asym_phenotypic_difference(self, other):
         count = diff_count(self.genes[-self.output_length:],
                            other.genes[-self.output_length:])
@@ -91,6 +124,8 @@ def generate(config):
     while True:
         mutants = [parent.mutate(config['mutation_rate'])
                    for _ in range(config['off_size'])]
+        if config['reorder']:
+            mutants = [mutant.reorder() for mutant in mutants]
         for index, mutant in enumerate(mutants):
             prev = mutant
             if config['speed'] != 'normal':

@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-g', dest='graph_length', type=int,
                         help='The number of nodes in the CGP graph')
-    parser.add_argument('-r', dest='mutation_rate', type=float,
+    parser.add_argument('-m', dest='mutation_rate', type=float,
                         help='Use the specified mutation rate.')
     parser.add_argument('-p', dest='problem', type=str,
                         help='Use the specified problem.')
@@ -78,6 +78,8 @@ if __name__ == '__main__':
                         help='Specifies if evolution should should avoid' +
                         ' duplicated evaluations.  Valid settings are: ' +
                         'normal, no_reeval, mutate_until_change')
+    parser.add_argument('-r', dest='reorder', action='store_true',
+                        help='Include this flag to have mutant reordering')
     parser.add_argument('-c', dest='output_config', type=str,
                         help='Outputs a single configuration file containing' +
                         ' the entire configuration used in this run')
@@ -90,6 +92,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = util.load_configurations(args.configs)
     config['verbose'] = args.verbose
+    config['reorder'] = args.reorder
 
     if 'seed' not in config:
         config['seed'] = random.randint(0, sys.maxint)
