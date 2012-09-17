@@ -40,7 +40,7 @@ def combine_results(results):
     combined = {}
     # Only gather results from successful runs
     successful = [result for result in results if result['success']]
-    for result in successful:
+    for result in results:
         for key, value in result.iteritems():
             try:
                 combined[key].append(value)
