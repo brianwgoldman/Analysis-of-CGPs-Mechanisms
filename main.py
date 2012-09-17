@@ -26,10 +26,13 @@ def all_runs(config):
     config['function_list'] = problem_function.operators
     config['max_arity'] = problem_function.max_arity
     results = []
-    for run in range(config['runs']):
-        if config['verbose']:
-            print "Starting Run", run
-        results.append(one_run(evaluator, config))
+    try:
+        for run in range(config['runs']):
+            if config['verbose']:
+                print "Starting Run", run
+            results.append(one_run(evaluator, config))
+    except KeyboardInterrupt:
+        print "Interrupted"
     return results
 
 

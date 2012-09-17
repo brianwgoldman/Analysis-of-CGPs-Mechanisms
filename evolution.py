@@ -51,7 +51,6 @@ class Individual(object):
         self.active = sorted([acting for acting in self.active if acting >= 0])
 
     def evaluate(self, inputs):
-        self.scratch = [None] * (self.graph_length + self.input_length)
         self.scratch[-len(inputs):] = inputs[::-1]
         for node_index in self.active:
             function = self.genes[node_index * self.node_step]

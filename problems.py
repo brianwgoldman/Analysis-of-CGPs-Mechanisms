@@ -1,5 +1,7 @@
 import operator
 import itertools
+import random
+import math
 
 
 def nand(x, y):
@@ -10,15 +12,35 @@ def nor(x, y):
     return not (x or y)
 
 
-def protected_division(numerator, denominator):
-    try:
-        return numerator / denominator
-    except ZeroDivisionError:
-        return numerator
+def protected(function):
+    def inner(*args):
+        try:
+            value = function(*args)
+            if math.isinf(value):
+                return args[0]
+            return value
+        except (ValueError, OverflowError, ZeroDivisionError):
+            return args[0]
+    inner.__name__ = function.__name__
+    return inner
+
+
+def arity_controlled(desired):
+    def wrap(function):
+        def inner(*args):
+            return function(*args[:desired])
+        inner.__name__ = function.__name__
+        return inner
+    return wrap
 
 binary_operators = [operator.or_, operator.and_, nand, nor]
 regression_operators = [operator.add, operator.sub,
-                        operator.mul, protected_division]
+                        operator.mul, operator.div]
+
+for unary in [math.sin, math.cos, math.exp, math.log]:
+    regression_operators.append(arity_controlled(1)(unary))
+
+regression_operators = [protected(op) for op in regression_operators]
 
 
 class Problem(object):
@@ -32,7 +54,7 @@ class Problem(object):
             answers = individual.evaluate(inputs)
             score -= sum(abs(answer - output)
                          for answer, output in zip(answers, outputs))
-        return score
+        return score / float(len(self.training))
 
 
 def problem_attributes(range_method, operators, max_arity):
@@ -48,9 +70,25 @@ def binary_range(config):
     return itertools.product((0, 1), repeat=config['input_length'])
 
 
+def float_samples(config):
+    return ([random.uniform(config['min'], config['max'])
+             for _ in xrange(config['input_length'])]
+            for _ in xrange(config['samples']))
+
+
 def float_range(config):
-    step = (config['max'] - config['min']) / (float(config['samples']) - 1)
-    return [x * step + config['min'] for x in range(config['samples'])]
+    counter = 0
+    while True:
+        value = counter * config['step'] + config['min']
+        if value > config['max']:
+            break
+        yield value
+        counter += 1
+
+
+def n_dimensional_grid(config):
+    return itertools.product(float_range(config),
+                             repeat=config['input_length'])
 
 
 @problem_attributes(binary_range, binary_operators, 2)
@@ -68,7 +106,13 @@ def binary_multiply(inputs):
     return map(int, extended)
 
 
-@problem_attributes(float_range, regression_operators, 2)
-def koza(inputs):
+@problem_attributes(float_samples, regression_operators, 2)
+def koza_quartic(inputs):
     x = inputs[0]
-    return [x ** 6 - 2 * x ** 4 + x ** 2]
+    return [x ** 4 + x ** 3 + x ** 2 + x]
+
+
+@problem_attributes(n_dimensional_grid, regression_operators, 2)
+def paige(inputs):
+    x, y = inputs
+    return [1.0 / (1 + x ** -4) + 1.0 / (1 + y ** -4)]
