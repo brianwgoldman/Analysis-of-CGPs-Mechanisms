@@ -29,7 +29,7 @@ def all_runs(config):
     try:
         for run in range(config['runs']):
             if config['verbose']:
-                print "Starting Run", run
+                print "Starting Run", run + 1
             results.append(one_run(evaluator, config))
     except KeyboardInterrupt:
         print "Interrupted"
