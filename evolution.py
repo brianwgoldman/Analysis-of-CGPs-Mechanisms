@@ -2,6 +2,7 @@ import random
 import sys
 from copy import copy
 from util import diff_count
+import itertools
 
 
 class Individual(object):
@@ -122,10 +123,10 @@ def generate(config):
     parent = Individual(**config)
     yield parent
     while True:
+        if config['reorder']:
+            parent = parent.reorder()
         mutants = [parent.mutate(config['mutation_rate'])
                    for _ in range(config['off_size'])]
-        if config['reorder']:
-            mutants = [mutant.reorder() for mutant in mutants]
         for index, mutant in enumerate(mutants):
             prev = mutant
             if config['speed'] != 'normal':
@@ -145,3 +146,11 @@ def generate(config):
         best_child = max(mutants)
         if parent <= best_child:
             parent = best_child
+
+
+def multi_indepenedent(config):
+    collective = itertools.izip(*[generate(config)
+                                  for _ in range(config['pop_size'])])
+    for next_iterations in collective:
+        for next_iteration in next_iterations:
+            yield next_iteration

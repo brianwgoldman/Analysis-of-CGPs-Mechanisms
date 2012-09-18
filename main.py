@@ -6,7 +6,7 @@ import util
 def one_run(evaluator, config):
     best = evolution.Individual(**config)
     last_improved = -1
-    for evals, individual in enumerate(evolution.generate(config)):
+    for evals, individual in enumerate(evolution.multi_indepenedent(config)):
         individual.fitness = evaluator.get_fitness(individual)
         if best < individual:
             best = individual
@@ -74,6 +74,8 @@ if __name__ == '__main__':
                         help='Use the specified mutation rate.')
     parser.add_argument('-p', dest='problem', type=str,
                         help='Use the specified problem.')
+    parser.add_argument('-pop_size', dest='pop_size', type=int,
+                        help='Use the specified population size.')
     parser.add_argument('-s', dest='speed', type=str,
                         help='Specifies if evolution should should avoid' +
                         ' duplicated evaluations.  Valid settings are: ' +
@@ -106,6 +108,9 @@ if __name__ == '__main__':
 
     if args.problem != None:
         config['problem'] = args.problem
+
+    if args.pop_size != None:
+        config['pop_size'] = args.pop_size
 
     try:
         raw_results = all_runs(config)
