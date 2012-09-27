@@ -3,6 +3,7 @@ import sys
 from copy import copy
 from util import diff_count
 import itertools
+from collections import defaultdict
 
 
 class Individual(object):
@@ -69,24 +70,24 @@ class Individual(object):
         return mutant
 
     def reorder(self):
-        dependencies = {node_index: set(self.connections(node_index))
-                        for node_index in range(self.graph_length)}
-        added = set(range(-self.input_length, 0))
-
-        def available():
-            return [node_index
-                    for node_index, depends_on in dependencies.iteritems()
-                    if depends_on <= added]
+        depends_on = defaultdict(set)
+        feeds_to = defaultdict(set)
+        for node_index in range(self.graph_length):
+            for conn in self.connections(node_index):
+                depends_on[node_index].add(conn)
+                feeds_to[conn].add(node_index)
         new_order = {i: i for i in range(-self.input_length, 0)}
+        addable = new_order.keys()
         counter = 0
-        while dependencies:
-            #to_add = random.choice(available())
-            choices = available()
-            to_add = random.choice(choices)
-            new_order[to_add] = counter
-            counter += 1
-            del dependencies[to_add]
-            added.add(to_add)
+        while addable:
+            working = random.choice(addable)
+            addable.remove(working)
+            for to_add in feeds_to[working]:
+                depends_on[to_add].remove(working)
+                if len(depends_on[to_add]) == 0:
+                    addable.append(to_add)
+                    new_order[to_add] = counter
+                    counter += 1
 
         mutant = self.copy()
         for node_index in range(self.graph_length):

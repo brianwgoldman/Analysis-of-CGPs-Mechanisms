@@ -12,7 +12,7 @@ def one_run(evaluator, config):
             best = individual
             last_improved = evals
             if config['verbose']:
-                print '\t', last_improved, best.fitness
+                print '\t', last_improved, best.fitness, len(best.active)
         if (evals >= config['max_evals'] or
             best.fitness >= config['max_fitness']):
             break
@@ -76,6 +76,8 @@ if __name__ == '__main__':
                         help='Use the specified problem.')
     parser.add_argument('-pop_size', dest='pop_size', type=int,
                         help='Use the specified population size.')
+    parser.add_argument('-seed', dest='seed', type=int,
+                        help='Use the specified random seed used')
     parser.add_argument('-s', dest='speed', type=str,
                         help='Specifies if evolution should should avoid' +
                         ' duplicated evaluations.  Valid settings are: ' +
@@ -91,12 +93,17 @@ if __name__ == '__main__':
     parser.add_argument('-o', dest='output_results', type=str,
                         help='Specify a file to output the results.')
 
+    parser.add_argument('-profile', dest='profile', action='store_true',
+                        help='Include this flag to run a profiler')
+
     args = parser.parse_args()
     config = util.load_configurations(args.configs)
     config['verbose'] = args.verbose
     config['reorder'] = args.reorder
 
-    if 'seed' not in config:
+    if args.seed != None:
+        config['seed'] = args.seed
+    elif 'seed' not in config:
         config['seed'] = random.randint(0, sys.maxint)
     random.seed(config['seed'])
 
@@ -111,6 +118,11 @@ if __name__ == '__main__':
 
     if args.pop_size != None:
         config['pop_size'] = args.pop_size
+
+    if args.profile:
+        import cProfile
+        cProfile.run("all_runs(config)", sort=2)
+        sys.exit()
 
     try:
         raw_results = all_runs(config)
