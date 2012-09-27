@@ -119,6 +119,9 @@ if __name__ == '__main__':
     if args.pop_size != None:
         config['pop_size'] = args.pop_size
 
+    if args.speed != None:
+        config['speed'] = args.speed
+
     if args.profile:
         import cProfile
         cProfile.run("all_runs(config)", sort=2)
