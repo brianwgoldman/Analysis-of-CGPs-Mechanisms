@@ -84,6 +84,8 @@ if __name__ == '__main__':
                         'normal, no_reeval, mutate_until_change')
     parser.add_argument('-r', dest='reorder', action='store_true',
                         help='Include this flag to have mutant reordering')
+    parser.add_argument('-dag', dest='dag', action='store_true',
+                        help='Include this flag for full dag representation')
     parser.add_argument('-c', dest='output_config', type=str,
                         help='Outputs a single configuration file containing' +
                         ' the entire configuration used in this run')
@@ -100,6 +102,7 @@ if __name__ == '__main__':
     config = util.load_configurations(args.configs)
     config['verbose'] = args.verbose
     config['reorder'] = args.reorder
+    config['dag'] = args.dag
 
     if args.seed != None:
         config['seed'] = args.seed

@@ -14,6 +14,7 @@ class Individual(object):
         self.graph_length = graph_length
         self.function_list = function_list
         self.output_length = output_length
+        self.genes = None
         self.genes = [self.random_gene(index) for index in
                       range(graph_length * self.node_step + output_length)]
         self.determine_active_nodes()
@@ -33,6 +34,20 @@ class Individual(object):
         else:
             return random.randint(-self.input_length, node_number - 1)
 
+    def dag_random_gene(self, index):
+        node_number = index // self.node_step
+        gene_number = index % self.node_step
+        if node_number >= self.graph_length:
+            node_number = self.graph_length
+            gene_number = -1
+
+        if gene_number == 0:
+            return random.choice(self.function_list)
+        elif gene_number < 0 or not self.genes:
+            return random.randint(-self.input_length, node_number - 1)
+        else:
+            return self.valid_reconnect(node_number)
+
     def copy(self):
         # WARNING individuals are shallow copied except for things added here
         new = copy(self)
@@ -51,6 +66,34 @@ class Individual(object):
                 # add all of the connection genes for this node
                 self.active.update(self.connections(node_index))
         self.active = sorted([acting for acting in self.active if acting >= 0])
+
+    def dag_determine_active_nodes(self):
+        depends_on = defaultdict(set)
+        feeds_to = defaultdict(set)
+        connected = self.genes[-self.output_length:]
+        added = set(connected)
+        # find the active nodes
+        while connected:
+            working = connected.pop()
+            if working < 0:
+                continue
+            for conn in self.connections(working):
+                depends_on[working].add(conn)
+                feeds_to[conn].add(working)
+                if conn not in added:
+                    connected.append(conn)
+                added.add(conn)
+        # find the order in which to evaluate them
+        self.active = []
+        activatable = [x for x in range(-self.input_length, 0)]
+
+        while activatable:
+            working = activatable.pop()
+            for conn in feeds_to[working]:
+                depends_on[conn].remove(working)
+                if len(depends_on[conn]) == 0:
+                    activatable.append(conn)
+                    self.active.append(conn)
 
     def evaluate(self, inputs):
         self.scratch[-len(inputs):] = inputs[::-1]
@@ -113,6 +156,30 @@ class Individual(object):
                       other.genes[index])
         return count
 
+    def valid_reconnect(self, node_index):
+        dependent = {node_index: True}
+        for index in range(-self.input_length, 0):
+            dependent[index] = False
+
+        def is_dependent(current):
+            if current in dependent:
+                return dependent[current]
+            for conn in self.connections(current):
+                if is_dependent(conn):
+                    dependent[current] = True
+                    return True
+            dependent[current] = False
+            return False
+
+        while True:
+            # Select a random node that is not dependent on this one
+            options = [index for index in
+                       range(-self.input_length, self.graph_length)
+                       if index not in dependent or not dependent[index]]
+            option = random.choice(options)
+            if not is_dependent(option):
+                return option
+
     def __lt__(self, other):
         return self.fitness < other.fitness
 
@@ -121,6 +188,11 @@ class Individual(object):
 
 
 def generate(config):
+    if config['dag']:
+        Individual.determine_active_nodes = \
+        Individual.dag_determine_active_nodes
+        Individual.random_gene = \
+        Individual.dag_random_gene
     parent = Individual(**config)
     yield parent
     while True:
