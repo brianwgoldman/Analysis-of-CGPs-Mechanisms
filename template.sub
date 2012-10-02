@@ -2,7 +2,7 @@
  
 ### define resources needed:
 ### walltime - how long you expect the job to run
-#PBS -l walltime=20:00:00
+#PBS -l walltime=40:00:00
  
 ### nodes:ppn - how many nodes & cores per node (ppn) that you require
 #PBS -l nodes=1
@@ -29,6 +29,7 @@ cd /mnt/home/goldma72/code/cgp
 
 ### call your executable
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reorder_SEED.dat -r
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_graph_SEED.dat -dag
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reeval_SEED.dat -s no_reeval
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_mutate_SEED.dat -s mutate_until_change
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_popsize_SEED.dat -pop_size 10
