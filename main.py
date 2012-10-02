@@ -86,6 +86,9 @@ if __name__ == '__main__':
                         help='Include this flag to have mutant reordering')
     parser.add_argument('-dag', dest='dag', action='store_true',
                         help='Include this flag for full dag representation')
+    parser.add_argument('-one', dest='one_active_mutation',
+                        action='store_true',
+                        help='Include this flag for one at a time mutation')
     parser.add_argument('-c', dest='output_config', type=str,
                         help='Outputs a single configuration file containing' +
                         ' the entire configuration used in this run')
@@ -103,6 +106,7 @@ if __name__ == '__main__':
     config['verbose'] = args.verbose
     config['reorder'] = args.reorder
     config['dag'] = args.dag
+    config['one_active_mutation'] = args.one_active_mutation
 
     if args.seed != None:
         config['seed'] = args.seed

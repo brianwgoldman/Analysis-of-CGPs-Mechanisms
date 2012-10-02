@@ -27,10 +27,17 @@ module load HDF5
 PATH=$PATH:/mnt/home/goldma72/bin
 cd /mnt/home/goldma72/code/cgp
 
-### call your executable
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reorder_SEED.dat -r
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_graph_SEED.dat -dag
+### Control Experiment
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_normal_SEED.dat
+
+### Reevaluation Experiments
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reeval_SEED.dat -s no_reeval
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_mutate_SEED.dat -s mutate_until_change
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_onemut_SEED.dat -one
+
+### Ordering Experiments
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reorder_SEED.dat -r
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_graph_SEED.dat -dag
+
+### Population Size
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_popsize_SEED.dat -pop_size 10
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_normal_SEED.dat

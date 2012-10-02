@@ -112,6 +112,20 @@ class Individual(object):
         mutant.determine_active_nodes()
         return mutant
 
+    def one_active_mutation(self, _):
+        mutant = self.copy()
+        while True:
+            index = random.randrange(len(mutant.genes))
+            newval = mutant.random_gene(index)
+            if newval != mutant.genes[index]:
+                mutant.genes[index] = newval
+                node_number = index // self.node_step
+                if (node_number >= self.graph_length or
+                    node_number in self.active):
+                    break
+        mutant.determine_active_nodes()
+        return mutant
+
     def reorder(self):
         depends_on = defaultdict(set)
         feeds_to = defaultdict(set)
@@ -180,6 +194,11 @@ class Individual(object):
             if not is_dependent(option):
                 return option
 
+    def show_active(self):
+        for node_index in self.active:
+            node_start = self.node_step * node_index
+            print node_index, self.genes[node_start], self.connections(node_index)
+
     def __lt__(self, other):
         return self.fitness < other.fitness
 
@@ -193,6 +212,8 @@ def generate(config):
         Individual.dag_determine_active_nodes
         Individual.random_gene = \
         Individual.dag_random_gene
+    if config['one_active_mutation']:
+        Individual.mutate = Individual.one_active_mutation
     parent = Individual(**config)
     yield parent
     while True:
