@@ -1,10 +1,13 @@
-PROBLEM=$1
-NODES=$2
-MUT=$3
-START=$4
-END=$5
+PROBLEMS='multiply paige parity quartic'
+NODES=$1
+MUT=$2
+START=$3
+END=$4
 
 for SEED in `seq $START $END`
 do
-	./runone.sh $PROBLEM $NODES $MUT $SEED
+	for PROBLEM in $PROBLEMS
+	do
+		echo ./runone.sh $PROBLEM $NODES $MUT $SEED
+	done
 done
