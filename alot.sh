@@ -8,6 +8,6 @@ for SEED in `seq $START $END`
 do
 	for PROBLEM in $PROBLEMS
 	do
-		echo ./runone.sh $PROBLEM $NODES $MUT $SEED
+		./runone.sh $PROBLEM $NODES $MUT $SEED
 	done
 done
