@@ -11,7 +11,15 @@ for filename in sys.argv[1:]:
     problem, nodes, rate, version, _ = base.split('_')
     with open(filename, 'r') as f:
         data = json.load(f)
-    groupings[problem, nodes, rate, version].append(data[1])
+    groupings[problem, int(nodes), float(rate), version].append(data[1])
 
+bests = defaultdict(tuple)
 for key, results in groupings.iteritems():
-    print key, combine_results(results)
+    problem, nodes, rate, version = key
+    combined = combine_results(results)
+    fitness = combined['fitness']
+    bests[problem, version] = max(bests[problem, version],
+                                  (fitness, nodes, rate))
+
+for best in sorted(bests.items()):
+    print best
