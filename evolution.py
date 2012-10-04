@@ -22,25 +22,35 @@ class Individual(object):
         self.scratch = [None] * (graph_length + self.input_length)
         self.fitness = -sys.maxint
 
-    def random_gene(self, index):
+    def random_gene(self, index, invalid=None):
         node_number = index // self.node_step
         gene_number = index % self.node_step
         if node_number >= self.graph_length:
             node_number = self.graph_length
             gene_number = -1
-
         if gene_number == 0:
-            return random.choice(self.function_list)
+            if len(self.function_list) == 1:
+                return self.function_list[0]
+            while True:
+                choice = random.choice(self.function_list)
+                if choice != invalid:
+                    return choice
         else:
-            return random.randint(-self.input_length, node_number - 1)
+            if node_number + self.input_length == 1:
+                return -1
+            while True:
+                choice = random.randrange(-self.input_length, node_number)
+                if choice != invalid:
+                    return choice
 
-    def dag_random_gene(self, index):
+    def dag_random_gene(self, index, _=None):
         node_number = index // self.node_step
         gene_number = index % self.node_step
         if node_number >= self.graph_length:
             node_number = self.graph_length
             gene_number = -1
 
+        # TODO Include forced change
         if gene_number == 0:
             return random.choice(self.function_list)
         elif gene_number < 0 or not self.genes:
@@ -108,7 +118,8 @@ class Individual(object):
         mutant = self.copy()
         for index in range(len(mutant.genes)):
             if random.random() < rate:
-                mutant.genes[index] = mutant.random_gene(index)
+                mutant.genes[index] = mutant.random_gene(index,
+                                                         mutant.genes[index])
         mutant.determine_active_nodes()
         return mutant
 
@@ -198,6 +209,7 @@ class Individual(object):
         for node_index in self.active:
             node_start = self.node_step * node_index
             print node_index, self.genes[node_start], self.connections(node_index)
+        print self.genes[-self.output_length:]
 
     def __lt__(self, other):
         return self.fitness < other.fitness
