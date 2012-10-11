@@ -1,13 +1,10 @@
-PROBLEMS='multiply paige parity quartic'
-NODES=$1
-MUT=$2
-START=$3
-END=$4
+MUT=$1
+START=$2
+END=$3
 
 for SEED in `seq $START $END`
 do
-	for PROBLEM in $PROBLEMS
-	do
-		./runone.sh $PROBLEM $NODES $MUT $SEED
-	done
+	./runone.sh quartic 100 $MUT $SEED
+	./runone.sh parity 3000 $MUT $SEED
+	./runone.sh multiply 3000 $MUT $SEED
 done
