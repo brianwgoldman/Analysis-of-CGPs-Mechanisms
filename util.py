@@ -47,3 +47,17 @@ def meanstd(data):
         return mean, std
     except (ZeroDivisionError, TypeError):
         return 0, 0
+
+
+def resample_probability(i, k, n):
+    n = float(n)
+    not_i = (n - 1 - i) / (n - i)
+    one_or_more_i = 1 - not_i ** k
+    not_better = (n - i) / n
+    none_better = not_better ** k
+    return one_or_more_i * none_better
+
+
+def best_of_k(data, k, minimum=False):
+    return sum(resample_probability(i, k, len(data)) * v
+               for i, v in enumerate(sorted(data, reverse=minimum)))

@@ -1,12 +1,13 @@
-import evolution
+from evolution import Individual, multi_indepenedent
 import problems
 import util
 
 
 def one_run(evaluator, config):
-    best = evolution.Individual(**config)
+    best = Individual(**config)
     last_improved = -1
-    for evals, individual in enumerate(evolution.multi_indepenedent(config)):
+    output = {}
+    for evals, individual in enumerate(multi_indepenedent(config, output)):
         individual.fitness = evaluator.get_fitness(individual)
         if best < individual:
             best = individual
@@ -16,9 +17,11 @@ def one_run(evaluator, config):
         if (evals >= config['max_evals'] or
             best.fitness >= config['max_fitness']):
             break
-    return {'fitness': best.fitness, 'evals': last_improved,
-            'success': best.fitness >= config['max_fitness'],
-            'phenotype': len(best.active)}
+    output.update({'fitness': best.fitness, 'evals': evals,
+                   'success': best.fitness >= config['max_fitness'],
+                   'phenotype': len(best.active),
+                   'normal': output['skipped'] + evals})
+    return output
 
 
 def all_runs(config):

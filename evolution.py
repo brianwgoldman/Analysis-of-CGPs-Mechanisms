@@ -218,7 +218,9 @@ class Individual(object):
         return self.fitness <= other.fitness
 
 
-def generate(config):
+def generate(config, output):
+    output['skipped'] = 0
+    output['estimated'] = 0
     if config['dag']:
         Individual.determine_active_nodes = \
         Individual.dag_determine_active_nodes
@@ -233,11 +235,15 @@ def generate(config):
             parent = parent.reorder()
         mutants = [parent.mutate(config['mutation_rate'])
                    for _ in range(config['off_size'])]
+        active = config['output_length'] + (len(parent.active) *
+                                            (config['max_arity'] + 1))
         for index, mutant in enumerate(mutants):
+            output['estimated'] += (1 - config['mutation_rate']) ** active
             prev = mutant
             if config['speed'] != 'normal':
                 change = parent.asym_phenotypic_difference(mutant)
                 if change == 0:
+                    output['skipped'] += 1
                     if config['speed'] == 'no_reeval':
                         continue
                     if config['speed'] == 'mutate_until_change':
@@ -254,8 +260,8 @@ def generate(config):
             parent = best_child
 
 
-def multi_indepenedent(config):
-    collective = itertools.izip(*[generate(config)
+def multi_indepenedent(config, output):
+    collective = itertools.izip(*[generate(config, output)
                                   for _ in range(config['pop_size'])])
     for next_iterations in collective:
         for next_iteration in next_iterations:
