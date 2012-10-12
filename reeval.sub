@@ -11,7 +11,7 @@
 #PBS -l mem=4gb
  
 ### you can give your job a name for easier identification
-#PBS -N PROBLEM_SEED_MUT_reeval
+#PBS -N SEED_MUT_PROBLEM
  
 ### if you are part of the buy in group, please edit the following
 ### line with your group id, and uncomment the line
@@ -27,5 +27,4 @@ module load HDF5
 PATH=$PATH:/mnt/home/goldma72/bin
 cd /mnt/home/goldma72/code/cgp
 
-### Reevaluation Experiments
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reeval_SEED.dat -s no_reeval
