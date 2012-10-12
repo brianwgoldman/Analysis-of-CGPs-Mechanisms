@@ -37,8 +37,8 @@ binary_operators = [operator.or_, operator.and_, nand, nor]
 regression_operators = [operator.add, operator.sub,
                         operator.mul, operator.div]
 
-for unary in [math.sin, math.cos, math.exp, math.log]:
-    regression_operators.append(arity_controlled(1)(unary))
+#for unary in [math.sin, math.cos, math.exp, math.log]:
+#    regression_operators.append(arity_controlled(1)(unary))
 
 regression_operators = [protected(op) for op in regression_operators]
 
@@ -47,14 +47,19 @@ class Problem(object):
     def __init__(self, problem_function, config):
         self.training = [(inputs, problem_function(inputs))
                          for inputs in problem_function.range(config)]
+        #self.training = [([1], [config['graph_length'] + 1])]
+        self.epsilon = config['epsilon']
 
     def get_fitness(self, individual):
         score = 0
         for inputs, outputs in self.training:
+            #print inputs, outputs
             answers = individual.evaluate(inputs)
-            score -= sum(abs(answer - output)
-                         for answer, output in zip(answers, outputs))
-        return score / float(len(self.training))
+            score += (sum(float(abs(answer - output) > self.epsilon)
+                          for answer, output in zip(answers, outputs))
+                      / len(outputs))
+        #sys.exit()
+        return 1 - (score / float(len(self.training)))
 
 
 def problem_attributes(range_method, operators, max_arity):
@@ -113,6 +118,6 @@ def koza_quartic(inputs):
 
 
 @problem_attributes(n_dimensional_grid, regression_operators, 2)
-def paige(inputs):
+def pagie(inputs):
     x, y = inputs
     return [1.0 / (1 + x ** -4) + 1.0 / (1 + y ** -4)]
