@@ -121,3 +121,25 @@ def koza_quartic(inputs):
 def pagie(inputs):
     x, y = inputs
     return [1.0 / (1 + x ** -4) + 1.0 / (1 + y ** -4)]
+
+
+def single_bit_set(config):
+    return [map(int, '1'.rjust(i + 1, '0').ljust(config['input_length'], '0'))
+            for i in range(config['input_length'])]
+
+
+@problem_attributes(single_bit_set, binary_operators, 2)
+def multiplexer(inputs):
+    oneat = inputs.index(1)
+    binary = bin(oneat)[2:]
+    width = math.log(len(inputs), 2)
+    return map(int, binary.zfill(int(width)))
+
+
+@problem_attributes(binary_range, binary_operators, 2)
+def demux(inputs):
+    combined = ''.join(map(str, inputs))
+    width = 2 ** len(inputs)
+    base = [0] * width
+    base[int(combined, 2)] = 1
+    return base
