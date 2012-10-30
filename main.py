@@ -18,7 +18,7 @@ the ``Accumulate`` mutation method on the Parity problem using seed number
 output turned on, outputting the results to output/test_run.dat.
 
 ``pypy main.py cfg/once.cfg cfg/parity.cfg -g 3000 -m 0.01
--seed 13 -s mutate_until_change -v -o output/test_run.dat``
+-seed 13 -s accumulate -v -o output/test_run.dat``
 
 For any support questions email brianwgoldman@acm.org.
 '''
@@ -159,14 +159,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', dest='speed', type=str,
                         help='Specifies if evolution should should avoid' +
                         ' duplicated evaluations.  Valid settings are: ' +
-                        'normal, no_reeval, mutate_until_change')
+                        'normal, skip, accumulate, single')
     parser.add_argument('-r', dest='reorder', action='store_true',
                         help='Include this flag to have mutant reordering')
     parser.add_argument('-dag', dest='dag', action='store_true',
                         help='Include this flag for full dag representation')
-    parser.add_argument('-one', dest='one_active_mutation',
-                        action='store_true',
-                        help='Include this flag for one at a time mutation')
     parser.add_argument('-c', dest='output_config', type=str,
                         help='Outputs a single configuration file containing' +
                         ' the entire configuration used in this run')
@@ -184,7 +181,6 @@ if __name__ == '__main__':
     config['verbose'] = args.verbose
     config['reorder'] = args.reorder
     config['dag'] = args.dag
-    config['one_active_mutation'] = args.one_active_mutation
 
     if args.seed != None:
         config['seed'] = args.seed

@@ -22,15 +22,15 @@ from util import wilcoxon_signed_rank, linecycler
 
 # Dictionary converter from original name to name used in paper
 pretty_name = {"normal": "Normal",
-               "onemut": "Single",
-               "reeval": "Skip",
-               "mutate": "Accumulate"}
+               "single": "Single",
+               "skip": "Skip",
+               "accumulate": "Accumulate"}
 
 # Specifies what order lines should appear in graphs
 order = {'normal': 1,
-         'reeval': 2,
-         'mutate': 3,
-         'onemut': 4}
+         'skip': 2,
+         'accumulate': 3,
+         'single': 4}
 
 if __name__ == '__main__':
     # Run through all of the files gathering different seeds into lists
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     bests = defaultdict(list)
     for key, results in groupings.iteritems():
         problem, nodes, rate, version = key
-        if version != 'onemut':
+        if version != 'single':
             rates.add(rate)
         combined = combine_results(results)
         toplot = nan
@@ -69,14 +69,14 @@ if __name__ == '__main__':
         # Only include in bests if fully successful
         if combined['success'][0] == 1:
             bests[version].append((toplot, rate, combined, results))
-        if version == 'reeval':
+        if version == 'skip':
             lines['normal'].append((rate, normal))
             # Ensure that normal was fully successful
             if max([result['normal'] for result in results]) < 10000000:
                 bests['normal'].append((normal, rate, combined, results))
     # Expand Single across all rates used
     try:
-        lines['onemut'] = [(rate, lines['onemut'][0][1])
+        lines['single'] = [(rate, lines['single'][0][1])
                            for rate in sorted(rates)]
     except IndexError:
         pass

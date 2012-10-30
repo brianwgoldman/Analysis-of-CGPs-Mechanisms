@@ -396,15 +396,14 @@ def generate(config, output):
 
       - All configuration information required to initialize an Individual.
       - ``dag``: If DAG based individuals should be used.
-      - ``one_active_mutation``: If the ``Single`` mutation method is used.
       - ``reorder``: If the parent should be reordered before making offspring.
       - ``mutation_rate``: The probably to use for mutation.
       - ``off_size``: The number of offspring to produce per generation.
       - ``output_length``: The number of output variables.
       - ``max_arity``: The maximum arity used by any function.
-      - ``speed``: String value of ``normal'', ``no_reeval'', or
-        ``mutate_until_change`` specifying if ``Normal'', ``Skip'', or
-        ``Accumulate`` should be used, respectively.
+      - ``speed``: String specifying the way to handle duplicate
+        individual creation, either ``normal'', ``skip'', ``accumulate``, or
+        ``single``.
     - ``output``: Dictionary used to return information about evolution, will
       send out:
 
@@ -418,7 +417,7 @@ def generate(config, output):
         Individual.dag_determine_active_nodes
         Individual.random_gene = \
         Individual.dag_random_gene
-    if config['one_active_mutation']:
+    if config['speed'] == 'single':
         Individual.mutate = Individual.one_active_mutation
     parent = Individual(**config)
     yield parent
@@ -432,19 +431,19 @@ def generate(config, output):
         for index, mutant in enumerate(mutants):
             output['estimated'] += (1 - config['mutation_rate']) ** active
             prev = mutant
-            if config['speed'] != 'normal':
+            if config['speed'] not in ['normal', 'single']:
                 change = parent.asym_phenotypic_difference(mutant)
                 if change == 0:
                     output['skipped'] += 1
-                    if config['speed'] == 'no_reeval':
+                    if config['speed'] == 'skip':
                         continue
-                    if config['speed'] == 'mutate_until_change':
+                    if config['speed'] == 'accumulate':
                         while change == 0:
                             prev = mutant
                             mutant = prev.mutate(config['mutation_rate'])
                             change = parent.asym_phenotypic_difference(mutant)
             yield mutant
-            if config['speed'] == 'mutate_until_change':
+            if config['speed'] == 'accumulate':
                 # If the mutant is strickly worse, use the last equivalent
                 mutants[index] = prev if mutant < parent else mutant
         best_child = max(mutants)

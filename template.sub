@@ -31,9 +31,9 @@ cd /mnt/home/goldma72/code/cgp
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_normal_SEED.dat
 
 ### Reevaluation Experiments
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reeval_SEED.dat -s no_reeval
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_mutate_SEED.dat -s mutate_until_change
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_onemut_SEED.dat -one
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_skip_SEED.dat -s skip
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_accumulate_SEED.dat -s accumulate
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_single_SEED.dat -s single
 
 ### Ordering Experiments
 pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -seed SEED -o output/PROBLEM_NODES_MUT_reorder_SEED.dat -r
