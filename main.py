@@ -17,6 +17,9 @@ def one_run(evaluator, config):
         if (evals >= config['max_evals'] or
             best.fitness >= config['max_fitness']):
             break
+    if config['verbose']:
+        print "Best Found"
+        best.show_active()
     output.update({'fitness': best.fitness, 'evals': evals,
                    'success': best.fitness >= config['max_fitness'],
                    'phenotype': len(best.active),
@@ -52,7 +55,7 @@ def combine_results(results):
             except KeyError:
                 combined[key] = [value]
     for key, value in combined.items():
-        combined[key] = util.meanstd(value)
+        combined[key] = util.median_deviation(value)
     try:
         combined['success'] = len(successful) / float(len(results)), 0
     except ZeroDivisionError:
