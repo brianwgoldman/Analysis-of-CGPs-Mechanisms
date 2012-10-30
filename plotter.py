@@ -32,82 +32,87 @@ order = {'normal': 1,
          'mutate': 3,
          'onemut': 4}
 
-# Run through all of the files gathering different seeds into lists
-groupings = defaultdict(list)
-filecount = 0
-for filename in sys.argv[1:]:
-    base = path.basename(filename)
+if __name__ == '__main__':
+    # Run through all of the files gathering different seeds into lists
+    groupings = defaultdict(list)
+    filecount = 0
+    for filename in sys.argv[1:]:
+        base = path.basename(filename)
+        try:
+            problem, nodes, rate, version, _ = base.split('_')
+            with open(filename, 'r') as f:
+                data = json.load(f)
+            groupings[problem, int(nodes),
+                      float(rate), version].append(data[1])
+            filecount += 1
+        except ValueError:
+            print filename, "FAILED"
+    print 'Files Successfully Loaded', filecount
+
+    #Find line information and best configurations
+    lines = defaultdict(list)
+    rates = set()
+    bests = defaultdict(list)
+    for key, results in groupings.iteritems():
+        problem, nodes, rate, version = key
+        if version != 'onemut':
+            rates.add(rate)
+        combined = combine_results(results)
+        toplot = nan
+        normal = nan
+        # Only gather data if median is less than the maximum
+        if combined['evals'][0] < 10000000:
+            toplot = combined['evals'][0]
+            if combined['normal'][0] < 10000000:
+                normal = combined['normal'][0]
+        lines[version].append((rate, toplot))
+        # Only include in bests if fully successful
+        if combined['success'][0] == 1:
+            bests[version].append((toplot, rate, combined, results))
+        if version == 'reeval':
+            lines['normal'].append((rate, normal))
+            # Ensure that normal was fully successful
+            if max([result['normal'] for result in results]) < 10000000:
+                bests['normal'].append((normal, rate, combined, results))
+    # Expand Single across all rates used
     try:
-        problem, nodes, rate, version, _ = base.split('_')
-        with open(filename, 'r') as f:
-            data = json.load(f)
-        groupings[problem, int(nodes), float(rate), version].append(data[1])
-        filecount += 1
-    except ValueError:
-        print filename, "FAILED"
-print 'Files Successfully Loaded', filecount
+        lines['onemut'] = [(rate, lines['onemut'][0][1])
+                           for rate in sorted(rates)]
+    except IndexError:
+        pass
 
-# From each collected experiment find line information and best configurations
-lines = defaultdict(list)
-rates = set()
-bests = defaultdict(list)
-for key, results in groupings.iteritems():
-    problem, nodes, rate, version = key
-    if version != 'onemut':
-        rates.add(rate)
-    combined = combine_results(results)
-    toplot = nan
-    normal = nan
-    # Only gather data if median is less than the maximum
-    if combined['evals'][0] < 10000000:
-        toplot = combined['evals'][0]
-        if combined['normal'][0] < 10000000:
-            normal = combined['normal'][0]
-    lines[version].append((rate, toplot))
-    # Only include in bests if fully successful
-    if combined['success'][0] == 1:
-        bests[version].append((toplot, rate, combined, results))
-    if version == 'reeval':
-        lines['normal'].append((rate, normal))
-        # Ensure that normal was fully successful
-        if max([result['normal'] for result in results]) < 10000000:
-            bests['normal'].append((normal, rate, combined, results))
-# Since we only have 1 data point for Single, expand it across all rates used
-try:
-    lines['onemut'] = [(rate, lines['onemut'][0][1]) for rate in sorted(rates)]
-except IndexError:
-    pass
+    # Plot the lines using the 'order' order
+    for version, line in sorted(lines.iteritems(), key=lambda X: order[X[0]]):
+        try:
+            X, Y = zip(*sorted(line))
+        except ValueError:
+            print version, line
+            continue
+        loglog(X, Y, label=pretty_name[version], linestyle=next(linecycler),
+               linewidth=2.5)
 
-# Plot the lines using the 'order' order
-for version, line in sorted(lines.iteritems(), key=lambda X: order[X[0]]):
-    try:
-        X, Y = zip(*sorted(line))
-    except ValueError:
-        print version, line
-        continue
-    loglog(X, Y, label=pretty_name[version], linestyle=next(linecycler),
-           linewidth=2.5)
+    legend(loc='best')
+    xlabel("Mutation Rate")
+    ylabel("Median Evaluations until Success")
+    statify = {}
+    print '\tBests'
+    print 'version, mutation rate, (evals, deviation),',
+    print 'genes not including output'
+    for version, data in bests.iteritems():
+        score, rate, combined, results = min(datum for datum
+                                             in data if datum[0] is not nan)
+        pretty = pretty_name[version]
+        genes = combined['phenotype'][0] * 3
+        if version != 'normal':
+            print pretty, rate, combined['evals'], genes
+            statify[version] = [result['evals'] for result in results]
+        else:
+            print pretty, rate, combined['normal'], genes
+            statify['normal'] = [result['normal'] for result in results]
 
-legend(loc='best')
-xlabel("Mutation Rate")
-ylabel("Median Evaluations until Success")
-statify = {}
-print '\tBests'
-print 'version, mutation rate, (evals, deviation), genes not including output'
-for version, data in bests.iteritems():
-    score, rate, combined, results = min(datum for datum
-                                         in data if datum[0] is not nan)
-    pretty = pretty_name[version]
-    if version != 'normal':
-        print pretty, rate, combined['evals'], combined['phenotype'][0] * 3
-        statify[version] = [result['evals'] for result in results]
-    else:
-        print pretty, rate, combined['normal'], combined['phenotype'][0] * 3
-        statify['normal'] = [result['normal'] for result in results]
-
-print "\nStatistical Tests"
-for version, data in statify.iteritems():
-    print "%s with Normal" % pretty_name[version],
-    print wilcoxon_signed_rank(statify['normal'], data)
-savefig(problem + ".eps", dpi=300)
-show()
+    print "\nStatistical Tests"
+    for version, data in statify.iteritems():
+        print "%s with Normal" % pretty_name[version],
+        print wilcoxon_signed_rank(statify['normal'], data)
+    savefig(problem + ".eps", dpi=300)
+    show()

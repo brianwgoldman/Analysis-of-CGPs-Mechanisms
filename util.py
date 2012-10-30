@@ -117,7 +117,7 @@ def median_deviation(data, median=None):
 def resample_probability(i, k, n):
     '''
     Given ``k`` samples from ``n`` items, what is the probability that the
-    ``i``th best element in the original set is the best found in the sample.
+    ``ith`` best element in the original set is the best found in the sample.
 
     Parameters:
 
