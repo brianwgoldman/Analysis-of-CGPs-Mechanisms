@@ -1,3 +1,17 @@
+'''
+Takes file names from the output/ folder and parses the information into
+readable values and produces a graph.  Use this module as an executable to
+process all information for a single problem, such as:
+
+python plotter.py output/multiply*
+
+Do not mix problems in a single run.  The graph will be saved to a .eps file
+named after the problem used.
+
+NOTE: You CANNOT use pypy for this as pylab is current unsupported.  Use
+python 2.7 instead.
+'''
+
 from pylab import show, loglog, legend, savefig, xlabel, ylabel, nan
 import json
 import sys

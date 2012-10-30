@@ -1,3 +1,14 @@
+'''
+Creates the plot of the predicted amount of waste for different mutation
+rates and different numbers of active genes.  To make the plot use:
+
+python wasteplot.py
+
+The graph will be saved to Probability.eps
+
+NOTE: You CANNOT use pypy for this as pylab is current unsupported.  Use
+python 2.7 instead.
+'''
 from pylab import plot, show, legend, savefig, xlabel, ylabel
 from util import linecycler
 

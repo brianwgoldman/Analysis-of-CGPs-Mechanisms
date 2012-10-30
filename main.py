@@ -1,9 +1,54 @@
+'''
+This module is intended to duplicate the 'main()' function found in other
+languages such as C++ and Java.  In order to run an experiment, this module
+should be passes to your interpreter.  In the interest of speed and consistency
+we suggest that PyPy 1.9.0 be used to run this code, although
+Python 2.7 should be able to handle it correctly.
+
+To see a full description of this modules command line arguments, run
+````pypy main.py -h````.
+
+Provided with this code should be the ``cfg`` folder which contains some
+configuration files useful for running experiments.  These files can be passed
+to main along with other configuration information in order to recreate
+the experiments performed in the Reducing Wasted Evaluations in Cartesian
+Genetic Programming publication.  For example, the following command runs a
+the ``Accumulate`` mutation method on the Parity problem using seed number
+13 with 3000 nodes in the graph and a mutation rate of 0.01 with verbose
+output turned on, outputting the results to output/test_run.dat.
+
+``pypy main.py cfg/once.cfg cfg/parity.cfg -g 3000 -m 0.01
+-seed 13 -s mutate_until_change -v -o output/test_run.dat``
+
+For any support questions email brianwgoldman@acm.org.
+'''
+
 from evolution import Individual, multi_indepenedent
 import problems
 import util
 
 
 def one_run(evaluator, config):
+    '''
+    Performs a single run of the given configuration.  Returns a dictionary
+    containing results.
+
+    Parameters:
+
+    - ``evaluator``: An object with the function get_fitness that takes an
+      individual and returns its fitness value
+    - ``config``: A dictionary containing all of the configuration information
+      required to perform a experimental run, including:
+
+      - All information required to initialize an individual.
+      - All information required to run ``evolution.multi_independent``.
+      - ``verbose``: Boolean value for if extra runtime information should
+        be displayed.
+      - ``max_evals``: The maximum number of evaluations allowed before
+        termination.
+      - ``max_fitness``: The fitness required to cause a "successful"
+        termination.
+    '''
     best = Individual(**config)
     last_improved = -1
     output = {}
@@ -28,6 +73,22 @@ def one_run(evaluator, config):
 
 
 def all_runs(config):
+    '''
+    Perform all of the requested runs on a given problem.  Returns a list of
+    the dictionaries returned by ``one_run``.  Will give results for all
+    completed runs if a keyboard interrupt is received.
+
+    Parameters:
+
+    - ``config``: Dictionary containing all configuration information required
+      to perform all of the necessary runs of the experiment.  Should contain
+      values for:
+
+      - All configuration information needed by ``one_run``
+      - ``problem``: The name of which problem from the ``problem`` module to
+        run experiments on.
+      - ``runs``: How many runs to perform
+    '''
     problem_function = problems.__dict__[config['problem']]
     evaluator = problems.Problem(problem_function, config)
     config['function_list'] = problem_function.operators
@@ -45,15 +106,26 @@ def all_runs(config):
 
 
 def combine_results(results):
+    '''
+    Given a list of result dictionaries, return analysis information such as
+    the median values of each statistic as well as the median absolute
+    deviation.
+
+    Parameters:
+
+    - ``results``: A list of dictionaries containing similar key values.
+    '''
     combined = {}
-    # Only gather results from successful runs
+    # Collect the successful runs
     successful = [result for result in results if result['success']]
+    # Combine like keys across all runs
     for result in results:
         for key, value in result.iteritems():
             try:
                 combined[key].append(value)
             except KeyError:
                 combined[key] = [value]
+    # Analyze the values for each key
     for key, value in combined.items():
         combined[key] = util.median_deviation(value)
     try:
@@ -136,6 +208,7 @@ if __name__ == '__main__':
         config['speed'] = args.speed
 
     if args.profile:
+        # When profiling, just run the configuration
         import cProfile
         cProfile.run("all_runs(config)", sort=2)
         sys.exit()
