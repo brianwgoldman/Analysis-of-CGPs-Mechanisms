@@ -149,7 +149,7 @@ if __name__ == '__main__':
                         help='The number of nodes in the CGP graph')
     parser.add_argument('-m', dest='mutation_rate', type=float,
                         help='Use the specified mutation rate.')
-    parser.add_argument('-g', dest='input_length', type=int,
+    parser.add_argument('-i', dest='input_length', type=int,
                         help='The number of input nodes in the CGP graph')
     parser.add_argument('-pop_size', dest='pop_size', type=int,
                         help='Use the specified population size.')
@@ -159,6 +159,10 @@ if __name__ == '__main__':
                         help='Specifies if evolution should should avoid' +
                         ' duplicated evaluations.  Valid settings are: ' +
                         'normal, skip, accumulate, single')
+    parser.add_argument('-a', dest='active_push', type=str,
+                        help='Specifies if evolution should bias toward' +
+                        'more or less active genes.  Valid settings are: ' +
+                        'none, more, less')
     parser.add_argument('-r', dest='reorder', action='store_true',
                         help='Include this flag to have mutant reordering')
     parser.add_argument('-dag', dest='dag', action='store_true',
@@ -193,14 +197,17 @@ if __name__ == '__main__':
     if args.mutation_rate != None:
         config['mutation_rate'] = args.mutation_rate
 
-    if args.problem != None:
-        config['problem'] = args.problem
+    if args.input_length != None:
+        config['input_length'] = args.input_length
 
     if args.pop_size != None:
         config['pop_size'] = args.pop_size
 
     if args.speed != None:
         config['speed'] = args.speed
+
+    if args.active_push != None:
+        config['active_push'] = args.active_push
 
     if args.profile:
         # When profiling, just run the configuration

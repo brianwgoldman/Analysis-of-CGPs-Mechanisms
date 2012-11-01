@@ -369,17 +369,26 @@ class Individual(object):
             print self.connections(node_index)
         print self.genes[-self.output_length:]
 
+    def get_fitness(self):
+        return self.fitness
+
+    def more_active(self):
+        return (self.fitness, len(self.active))
+
+    def less_active(self):
+        return (self.fitness, -len(self.active))
+
     def __lt__(self, other):
         '''
         Returns the result of self.fitness < other.fitness.
         '''
-        return self.fitness < other.fitness
+        return self.get_fitness() < other.get_fitness()
 
     def __le__(self, other):
         '''
         Returns the result of self.fitness <= other.fitness.
         '''
-        return self.fitness <= other.fitness
+        return self.get_fitness() <= other.get_fitness()
 
 
 def generate(config, output):
@@ -419,6 +428,10 @@ def generate(config, output):
         Individual.dag_random_gene
     if config['speed'] == 'single':
         Individual.mutate = Individual.one_active_mutation
+    if config['active_push'] == 'more':
+        Individual.get_fitness = Individual.more_active
+    elif config['active_push'] == 'less':
+        Individual.get_fitness = Individual.less_active
     parent = Individual(**config)
     yield parent
     while True:
