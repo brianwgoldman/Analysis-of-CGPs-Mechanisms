@@ -6,6 +6,7 @@ import operator
 import itertools
 import random
 import math
+import sys
 
 
 def nand(x, y):
@@ -75,11 +76,20 @@ regression_operators = [protected(op) for op in regression_operators]
 
 
 class Problem(object):
+    def __init__(self, config):
+        raise NotImplementedError()
+
+    def get_fitness(self, individual):
+        raise NotImplementedError()
+
+
+class Bounded_Problem(object):
     '''
     Object used to store training input values and expected output values
     which are used in evaluating individuals.
     '''
-    def __init__(self, problem_function, config):
+
+    def __init__(self, config):
         '''
         Create a new problem.
 
@@ -96,8 +106,9 @@ class Problem(object):
             range.
           - ``epsilon``: The amount of allowed error on each test.
         '''
-        self.training = [(inputs, problem_function(inputs))
-                         for inputs in problem_function.range(config)]
+        self.config = config
+        self.training = [(inputs, self.problem_function(inputs))
+                         for inputs in self.data_range(config)]
         self.epsilon = config['epsilon']
 
     def get_fitness(self, individual):
@@ -119,23 +130,8 @@ class Problem(object):
         # Returns the percentage of correct answers
         return 1 - (score / float(len(self.training)))
 
-
-def problem_attributes(range_method, operators, max_arity):
-    '''
-    Decorator that adds attributes to problem functions.
-
-    Parameters
-
-    - ``range_method``: The function used to generate training input values.
-    - ``operators``: The list of valid operators on this problem.
-    - ``max_arity``: The maximum arity of all operators.
-    '''
-    def wrapper(wraps):
-        wraps.range = range_method
-        wraps.operators = operators
-        wraps.max_arity = max_arity
-        return wraps
-    return wrapper
+    def problem_function(self, _):
+        raise NotImplementedError()
 
 
 def binary_range(config):
@@ -144,6 +140,15 @@ def binary_range(config):
     values of that length.
     '''
     return itertools.product((0, 1), repeat=config['input_length'])
+
+
+def single_bit_set(config):
+    '''
+    Creates the list of all possible binary strings of specified length
+    with exactly one set bit.  ``config`` should specify the ``input_length``.
+    '''
+    return [map(int, '1'.rjust(i + 1, '0').ljust(config['input_length'], '0'))
+            for i in range(config['input_length'])]
 
 
 def float_samples(config):
@@ -198,100 +203,140 @@ def n_dimensional_grid(config):
                              repeat=config['input_length'])
 
 
-@problem_attributes(binary_range, binary_operators, 2)
-def even_parity(inputs):
-    '''
-    Return the even parity of a list of boolean values.
-    '''
-    return [(sum(inputs) + 1) % 2]
+class Binary_Mixin(object):
+    data_range = staticmethod(binary_range)
+    operators = binary_operators
+    max_arity = 2
 
 
-@problem_attributes(binary_range, binary_operators, 2)
-def binary_multiply(inputs):
-    '''
-    Return the result of performing a binary multiplication of the first half
-    of the inputs with the second half.  Will always have the same number of
-    output bits as input bits.
-    '''
-    # convert the two binary numbers to integers
-    joined = ''.join(map(str, inputs))
-    middle = len(joined) / 2
-    a, b = joined[:middle], joined[middle:]
-    # multiply the two numbers and convert back to binary
-    multiplied = bin(int(a, 2) * int(b, 2))[2:]
-    # pad the result to have enough bits
-    extended = multiplied.rjust(len(inputs), '0')
-    return map(int, extended)
+class Regression_Mixin(object):
+    data_range = staticmethod(float_range)
+    operators = regression_operators
+    max_arity = 2
 
 
-@problem_attributes(float_samples, regression_operators, 2)
-def koza_quartic(inputs):
-    '''
-    Return the result of Koza-1 on the specified input.  Expects the input
-    as a single element list and returns a single element list.
-    '''
-    x = inputs[0]
-    return [x ** 4 + x ** 3 + x ** 2 + x]
+class Neutral(Problem):
+    operators = [None]
+    max_arity = 2
+
+    def __init__(self, _):
+        self.counter = 1 - sys.maxint
+
+    def get_fitness(self, _):
+        self.counter += 1
+        return self.counter
 
 
-@problem_attributes(n_dimensional_grid, regression_operators, 2)
-def pagie(inputs):
-    '''
-    Returns the result of Pagie-1 on the specified inputs.
-    '''
-    x, y = inputs
-    return [1.0 / (1 + x ** -4) + 1.0 / (1 + y ** -4)]
+class Even_Parity(Bounded_Problem, Binary_Mixin):
+    def problem_function(self, inputs):
+        '''
+        Return the even parity of a list of boolean values.
+        '''
+        return [(sum(inputs) + 1) % 2]
 
 
-def single_bit_set(config):
-    '''
-    Creates the list of all possible binary strings of specified length
-    with exactly one set bit.  ``config`` should specify the ``input_length``.
-    '''
-    return [map(int, '1'.rjust(i + 1, '0').ljust(config['input_length'], '0'))
-            for i in range(config['input_length'])]
+class Binary_Multiply(Bounded_Problem, Binary_Mixin):
+    def problem_function(self, inputs):
+        '''
+        Return the result of performing a binary multiplication of the first
+        half of the inputs with the second half.  Will always have the same
+        number of output bits as input bits.
+        '''
+        # convert the two binary numbers to integers
+        joined = ''.join(map(str, inputs))
+        middle = len(joined) / 2
+        a, b = joined[:middle], joined[middle:]
+        # multiply the two numbers and convert back to binary
+        multiplied = bin(int(a, 2) * int(b, 2))[2:]
+        # pad the result to have enough bits
+        extended = multiplied.rjust(len(inputs), '0')
+        return map(int, extended)
 
 
-@problem_attributes(single_bit_set, binary_operators, 2)
-def binary_encode(inputs):
-    '''
-    Returns the binary encoding of which input line contains a one.
-    '''
-    oneat = inputs.index(1)
-    binary = bin(oneat)[2:]
-    width = math.log(len(inputs), 2)
-    return map(int, binary.zfill(int(width)))
+class Multiplexer(Bounded_Problem, Binary_Mixin):
+    def problem_function(self, inputs):
+        '''
+        Uses the first k bits as a selector for which of the remaining bits to
+        return.
+        '''
+        k = int(math.log(len(inputs), 2))
+        index = int(''.join(map(str, inputs[:k])), 2) + k
+        return [inputs[index]]
 
 
-@problem_attributes(binary_range, binary_operators, 2)
-def binary_decode(inputs):
-    '''
-    Returns a 1 on the output line specified by the binary input index
-    '''
-    combined = ''.join(map(str, inputs))
-    width = 2 ** len(inputs)
-    base = [0] * width
-    base[int(combined, 2)] = 1
-    return base
+class Demultiplexer(Bounded_Problem, Binary_Mixin):
+    def problem_function(self, inputs):
+        '''
+        Returns the last input bit on the output line specified by the binary
+        index encoded on all inputs except the last bit.
+        '''
+        k = int(math.log(len(inputs) - 1, 2))
+        index = int(''.join(map(str, inputs[:k])), 2) + k
+        return [inputs[index]]
 
 
-@problem_attributes(binary_range, binary_operators, 2)
-def mux(inputs):
-    '''
-    Uses the first k bits as a selector for which of the remaining bits to
-    return.
-    '''
-    k = int(math.log(len(inputs), 2))
-    index = int(''.join(map(str, inputs[:k])), 2) + k
-    return [inputs[index]]
+class Binary_Encode(Bounded_Problem, Binary_Mixin):
+    data_range = staticmethod(single_bit_set)
+
+    def problem_function(self, inputs):
+        '''
+        Returns the binary encoding of which input line contains a one.
+        '''
+        oneat = inputs.index(1)
+        binary = bin(oneat)[2:]
+        width = math.log(len(inputs), 2)
+        return map(int, binary.zfill(int(width)))
 
 
-@problem_attributes(binary_range, binary_operators, 2)
-def demux(inputs):
-    '''
-    Returns the last input bit on the output line specified by the binary
-    index encoded on all inputs except the last bit.
-    '''
-    k = int(math.log(len(inputs) - 1, 2))
-    index = int(''.join(map(str, inputs[:k])), 2) + k
-    return [inputs[index]]
+class Binary_Decode(Bounded_Problem, Binary_Mixin):
+    data_range = staticmethod(single_bit_set)
+
+    def problem_function(self, inputs):
+        '''
+        Returns a 1 on the output line specified by the binary input index
+        '''
+        combined = ''.join(map(str, inputs))
+        width = 2 ** len(inputs)
+        base = [0] * width
+        base[int(combined, 2)] = 1
+        return base
+
+
+class Bredth(Bounded_Problem, Binary_Mixin):
+    data_range = staticmethod(single_bit_set)
+    operators = [operator.or_]
+
+    def problem_function(self, inputs):
+        return [sum(inputs) > 0]
+
+
+class Depth(Problem):
+    operators = [lambda X, Y: min(X, Y) + 1]
+    max_arity = 2
+
+    def __init__(self, config):
+        self.config = config
+
+    def get_fitness(self, individual):
+        return individual.evaluate([0])[0] / float(self.config['graph_length'])
+
+
+class Koza_1(Bounded_Problem, Regression_Mixin):
+    def koza_quartic(self, inputs):
+        '''
+        Return the result of Koza-1 on the specified input.  Expects the input
+        as a single element list and returns a single element list.
+        '''
+        x = inputs[0]
+        return [x ** 4 + x ** 3 + x ** 2 + x]
+
+
+class Pagie_1(Bounded_Problem, Regression_Mixin):
+    data_range = staticmethod(n_dimensional_grid)
+
+    def pagie(self, inputs):
+        '''
+        Returns the result of Pagie-1 on the specified inputs.
+        '''
+        x, y = inputs
+        return [1.0 / (1 + x ** -4) + 1.0 / (1 + y ** -4)]
