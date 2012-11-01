@@ -89,10 +89,9 @@ def all_runs(config):
         run experiments on.
       - ``runs``: How many runs to perform
     '''
-    problem_function = problems.__dict__[config['problem']]
-    evaluator = problems.Problem(problem_function, config)
-    config['function_list'] = problem_function.operators
-    config['max_arity'] = problem_function.max_arity
+    evaluator = problems.__dict__[config['problem']](config)
+    config['function_list'] = evaluator.operators
+    config['max_arity'] = evaluator.max_arity
     results = []
     try:
         for run in range(config['runs']):
@@ -150,8 +149,8 @@ if __name__ == '__main__':
                         help='The number of nodes in the CGP graph')
     parser.add_argument('-m', dest='mutation_rate', type=float,
                         help='Use the specified mutation rate.')
-    parser.add_argument('-p', dest='problem', type=str,
-                        help='Use the specified problem.')
+    parser.add_argument('-g', dest='input_length', type=int,
+                        help='The number of input nodes in the CGP graph')
     parser.add_argument('-pop_size', dest='pop_size', type=int,
                         help='Use the specified population size.')
     parser.add_argument('-seed', dest='seed', type=int,
