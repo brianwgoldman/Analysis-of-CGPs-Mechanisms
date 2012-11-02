@@ -345,18 +345,15 @@ class Individual(object):
                     return True
             dependent[current] = False
             return False
-
-        while True:
-            # Select a random node that is not dependent on this one
-            options = [index for index in
-                       range(-self.input_length, self.graph_length)
-                       if index not in dependent or not dependent[index]]
-            # If your out of options, return the invalid value
-            if len(options) == 0:
-                return invalid
-            option = random.choice(options)
+        options = range(-self.input_length, self.graph_length)
+        for index in range(len(options)):
+            swapdown = random.randrange(index, len(options))
+            options[index], options[swapdown] = (options[swapdown],
+                                                 options[index])
+            option = options[index]
             if not is_dependent(option):
                 return option
+        return invalid
 
     def show_active(self):
         '''
