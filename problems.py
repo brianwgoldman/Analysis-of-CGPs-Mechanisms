@@ -6,7 +6,6 @@ import operator
 import itertools
 import random
 import math
-import sys
 
 
 def nand(x, y):
@@ -220,11 +219,10 @@ class Neutral(Problem):
     max_arity = 2
 
     def __init__(self, _):
-        self.counter = 1 - sys.maxint
+        pass
 
     def get_fitness(self, _):
-        self.counter += 1
-        return self.counter
+        return 0
 
 
 class Even_Parity(Bounded_Problem, Binary_Mixin):
@@ -319,6 +317,34 @@ class Depth(Problem):
 
     def get_fitness(self, individual):
         return individual.evaluate([0])[0] / float(self.config['graph_length'])
+
+
+class Inputs_Only(Problem):
+    operators = [None]
+    max_arity = 2
+
+    def __init__(self, _):
+        pass
+
+    def get_fitness(self, individual):
+        correct, total = 0, 0
+        for gene in individual.genes:
+            if gene is not None:
+                if gene < 0:
+                    correct += 1
+                total += 1
+        return correct / float(total)
+
+
+class Active(Problem):
+    operators = [None]
+    max_arity = 2
+
+    def __init__(self, config):
+        self.config = config
+
+    def get_fitness(self, individual):
+        return len(individual.active) / float(self.config['graph_length'])
 
 
 class Koza_1(Bounded_Problem, Regression_Mixin):
