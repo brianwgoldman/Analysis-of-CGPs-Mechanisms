@@ -319,7 +319,7 @@ class Depth(Problem):
         return individual.evaluate([0])[0] / float(self.config['graph_length'])
 
 
-class Inputs_Only(Problem):
+class Flat(Problem):
     operators = [None]
     max_arity = 2
 
