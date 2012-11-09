@@ -180,6 +180,9 @@ class Individual(object):
                     activatable.append(conn)
                     self.active.append(conn)
 
+    def all_active(self):
+        self.active = range(self.graph_length)
+
     def evaluate(self, inputs):
         '''
         Given a list of inputs, return a list of outputs from executing
@@ -429,6 +432,8 @@ def generate(config, output):
         Individual.get_fitness = Individual.more_active
     elif config['active_push'] == 'less':
         Individual.get_fitness = Individual.less_active
+    if config['problem'] == 'Flat':
+        Individual.determine_active_nodes = Individual.all_active
     parent = Individual(**config)
     yield parent
     while True:
