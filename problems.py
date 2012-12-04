@@ -308,6 +308,16 @@ class Bredth(Bounded_Problem, Binary_Mixin):
         return [sum(inputs) > 0]
 
 
+class TwoFloor(Bounded_Problem, Binary_Mixin):
+    data_range = staticmethod(single_bit_set)
+    operators = [operator.or_]
+
+    def problem_function(self, inputs):
+        results = [0] * (len(inputs) // 2)
+        results[inputs.index(1) // 2] = 1
+        return results
+
+
 class Depth(Problem):
     operators = [lambda X, Y: min(X, Y) + 1]
     max_arity = 2

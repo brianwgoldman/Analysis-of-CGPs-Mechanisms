@@ -30,41 +30,28 @@ pretty_name = {"normal": "Normal",
 order = {'normal': 1,
          'reorder': 2,
          'dag': 3,
-         'mut': 4,
          }
 
 if __name__ == '__main__':
     # Run through all of the files gathering different seeds into lists
-    raw = defaultdict(list)
+    lines = {}
     filecount = 0
-    for filename in sys.argv[1:]:
+    key = sys.argv[1]
+    for filename in sys.argv[2:]:
         base = path.basename(filename)
         try:
-            problem, nodes, version, seed = base.split('_')
-            seed = int(seed[:-4])
+            version = base[:-4]
             with open(filename, 'r') as f:
                 data = json.load(f)
-            raw[problem, int(nodes), version].append(data[1])
+            lines[version] = data[key]
             filecount += 1
         except ValueError:
             print filename, "FAILED"
     print 'Files Successfully Loaded', filecount
 
-    #Find line information and best configurations
-    lines = defaultdict(list)
-    rates = set()
-    bests = defaultdict(list)
-    for key, results in raw.iteritems():
-        problem, nodes, version = key
-        combined = combine_results(results)
-        evals = nan
-        rate = nan
-        # Only gather data if median is less than the maximum
-        if combined['evals'][0] < 10000000:
-            evals = combined['evals'][0]
-        lines[version].append((nodes, evals))
     # Plot the lines using the 'order' order
     for version, line in sorted(lines.iteritems(), key=lambda X: order[X[0]]):
+        '''
         try:
             X, Y = zip(*sorted(line))
             print version
@@ -74,7 +61,8 @@ if __name__ == '__main__':
         except ValueError:
             print version, line
             continue
-        loglog(X, Y, label=version, linestyle=next(linecycler),
+        '''
+        plot(line, label=version, linestyle=next(linecycler),
                linewidth=2.5)
     #ax = gca()
     #ax.set_yscale('log')
@@ -103,5 +91,5 @@ if __name__ == '__main__':
         print "%s with Normal" % pretty_name[version],
         print wilcoxon_signed_rank(statify['normal'], data)
     '''
-    savefig(problem + ".eps", dpi=300)
+    savefig(key + ".eps", dpi=300)
     show()

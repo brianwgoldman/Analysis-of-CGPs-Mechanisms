@@ -26,9 +26,10 @@ For any support questions email brianwgoldman@acm.org.
 from evolution import Individual, multi_indepenedent
 import problems
 import util
+from collections import defaultdict
 
 
-def one_run(evaluator, config):
+def one_run(evaluator, config, frequencies):
     '''
     Performs a single run of the given configuration.  Returns a dictionary
     containing results.
@@ -52,7 +53,8 @@ def one_run(evaluator, config):
     best = Individual(**config)
     last_improved = -1
     output = {}
-    for evals, individual in enumerate(multi_indepenedent(config, output)):
+    generator = enumerate(multi_indepenedent(config, output, frequencies))
+    for evals, individual in generator:
         individual.fitness = evaluator.get_fitness(individual)
         if best < individual:
             best = individual
@@ -93,15 +95,20 @@ def all_runs(config):
     config['function_list'] = evaluator.operators
     config['max_arity'] = evaluator.max_arity
     results = []
+    frequencies = {'length_frequencies': defaultdict(int),
+                  'depth_min': defaultdict(int),
+                  'depth_max': defaultdict(int),
+                  'depth_disparity': defaultdict(int),
+                  'depth_total': defaultdict(int)}
     try:
         for run in range(config['runs']):
             print "Starting Run", run + 1
-            result = one_run(evaluator, config)
+            result = one_run(evaluator, config, frequencies)
             print result
             results.append(result)
     except KeyboardInterrupt:
         print "Interrupted"
-    return results
+    return results, frequencies
 
 
 def combine_results(results):
@@ -132,6 +139,24 @@ def combine_results(results):
     except ZeroDivisionError:
         combined['success'] = 0, 0
     return combined
+
+
+def process_frequencies(config, frequencies):
+    as_list = {}
+    for key in frequencies.keys():
+        if key in ['length_goes_up', 'length_goes_down']:
+            continue
+        total_for_key = float(sum(frequencies[key].itervalues()))
+        as_list[key] = [frequencies[key][index] / total_for_key
+                        for index in range(config['graph_length'])]
+    up_down = [(frequencies['length_goes_up'][index],
+                frequencies['length_goes_down'][index])
+               for index in range(config['graph_length'])]
+    #as_list['length_goes_up'] = [up / float(up + down)
+    #                             for up, down in up_down if up + down >= 10]
+    as_list['length_goes_up'] = [up / float(down) if down > 0 else 0
+                                 for up, down in up_down ]
+    return as_list
 
 if __name__ == '__main__':
     import argparse
@@ -175,6 +200,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-o', dest='output_results', type=str,
                         help='Specify a file to output the results.')
+    parser.add_argument('-freq', dest='frequency_results', type=str,
+                        help='Specify a file to output the frequency results.')
 
     parser.add_argument('-profile', dest='profile', action='store_true',
                         help='Include this flag to run a profiler')
@@ -209,6 +236,9 @@ if __name__ == '__main__':
     if args.active_push != None:
         config['active_push'] = args.active_push
 
+    if args.frequency_results != None:
+        config['frequency_results'] = args.frequency_results
+
     if args.profile:
         # When profiling, just run the configuration
         import cProfile
@@ -216,12 +246,15 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
-        raw_results = all_runs(config)
+        raw_results, frequencies = all_runs(config)
         combined = combine_results(raw_results).items()
         print sorted(combined)
         if args.output_results != None:
             util.save_list(args.output_results, [combined] + raw_results)
         if args.output_config != None:
             util.save_configuration(args.output_config, config)
+        if args.frequency_results != None:
+            processed = process_frequencies(config, frequencies)
+            util.save_configuration(args.frequency_results, processed)
     except KeyError as e:
         print 'You must include a configuration value for', e.args[0]

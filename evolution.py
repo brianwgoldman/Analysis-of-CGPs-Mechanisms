@@ -183,6 +183,32 @@ class Individual(object):
     def all_active(self):
         self.active = range(self.graph_length)
 
+    def record_node_depths(self, frequencies):
+        depths = {input_index: set()
+                  for input_index in range(-self.input_length, 0)}
+
+        def get_depths(node_index):
+            try:
+                return depths[node_index]
+            except KeyError:
+                pass
+            minimum, maximum, total = self.graph_length, 0, set([node_index])
+            for conn in self.connections(node_index):
+                conn_total = get_depths(conn)
+                minimum = min(len(conn_total), minimum)
+                maximum = max(len(conn_total), maximum)
+                total |= conn_total
+            depths[node_index] = total
+            frequencies['depth_min'][minimum] += 1
+            frequencies['depth_max'][maximum] += 1
+            frequencies['depth_disparity'][maximum - minimum] += 1
+            frequencies['depth_total'][len(total) - 1] += 1
+            return total
+
+        # Loops through all possible indices to ensure all get set.
+        for node_index in range(self.graph_length):
+            get_depths(node_index)
+
     def evaluate(self, inputs):
         '''
         Given a list of inputs, return a list of outputs from executing
@@ -267,13 +293,14 @@ class Individual(object):
             # Choose a node at random who's dependencies have already been met
             working = random.choice(addable)
             addable.remove(working)
+            if working >= 0:
+                new_order[working] = counter
+                counter += 1
             # Update all dependencies now that this node has been added
             for to_add in feeds_to[working]:
                 depends_on[to_add].remove(working)
                 if len(depends_on[to_add]) == 0:
                     addable.append(to_add)
-                    new_order[to_add] = counter
-                    counter += 1
 
         # Create the new individual using the new ordering
         mutant = self.copy()
@@ -391,7 +418,7 @@ class Individual(object):
         return self.get_fitness() <= other.get_fitness()
 
 
-def generate(config, output):
+def generate(config, output, frequencies):
     '''
     An ``Individual`` generator that will yield a never ending supply of
     ``Individual`` objects that need to have their fitness set before the
@@ -457,6 +484,9 @@ def generate(config, output):
                             prev = mutant
                             mutant = prev.mutate(config['mutation_rate'])
                             change = parent.asym_phenotypic_difference(mutant)
+            if 'frequency_results' in config:
+                frequencies['length_frequencies'][len(mutant.active)] += 1
+                mutant.record_node_depths(frequencies)
             yield mutant
             if config['speed'] == 'accumulate':
                 # If the mutant is strickly worse, use the last equivalent
@@ -466,7 +496,7 @@ def generate(config, output):
             parent = best_child
 
 
-def multi_indepenedent(config, output):
+def multi_indepenedent(config, output, frequencies):
     '''
     Allows for multiple parallel independent populations to be evolved
     at the same time.  Will generate one individual from each population
@@ -484,7 +514,7 @@ def multi_indepenedent(config, output):
       parallel populations.  Will contain all information output by
       ``generate``.
     '''
-    collective = itertools.izip(*[generate(config, output)
+    collective = itertools.izip(*[generate(config, output, frequencies)
                                   for _ in range(config['pop_size'])])
     for next_iterations in collective:
         for next_iteration in next_iterations:
