@@ -144,18 +144,9 @@ def combine_results(results):
 def process_frequencies(config, frequencies):
     as_list = {}
     for key in frequencies.keys():
-        if key in ['length_goes_up', 'length_goes_down']:
-            continue
         total_for_key = float(sum(frequencies[key].itervalues()))
         as_list[key] = [frequencies[key][index] / total_for_key
                         for index in range(config['graph_length'])]
-    up_down = [(frequencies['length_goes_up'][index],
-                frequencies['length_goes_down'][index])
-               for index in range(config['graph_length'])]
-    #as_list['length_goes_up'] = [up / float(up + down)
-    #                             for up, down in up_down if up + down >= 10]
-    as_list['length_goes_up'] = [up / float(down) if down > 0 else 0
-                                 for up, down in up_down ]
     return as_list
 
 if __name__ == '__main__':

@@ -352,7 +352,9 @@ class Individual(object):
         - ``invalid``: Value to avoid returning if possible
         '''
         # Nodes always depend on themselves and inputs never depend on nodes
-        dependent = {node_index: True, invalid: True}
+        dependent = {node_index: True, invalid: False}
+        for conn in self.connections(node_index):
+            dependent[conn] = False
         for index in range(-self.input_length, 0):
             dependent[index] = False
 
@@ -381,7 +383,7 @@ class Individual(object):
             options[index], options[swapdown] = (options[swapdown],
                                                  options[index])
             option = options[index]
-            if not is_dependent(option):
+            if option != invalid and not is_dependent(option):
                 return option
         return invalid
 
