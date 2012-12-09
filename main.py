@@ -145,8 +145,11 @@ def process_frequencies(config, frequencies):
     as_list = {}
     for key in frequencies.keys():
         total_for_key = float(sum(frequencies[key].itervalues()))
-        as_list[key] = [frequencies[key][index] / total_for_key
-                        for index in range(config['graph_length'])]
+        try:
+            as_list[key] = [frequencies[key][index] / total_for_key
+                            for index in range(config['graph_length'])]
+        except ZeroDivisionError:
+            pass
     return as_list
 
 if __name__ == '__main__':
