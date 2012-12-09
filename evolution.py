@@ -488,7 +488,7 @@ def generate(config, output, frequencies):
                             change = parent.asym_phenotypic_difference(mutant)
             if 'frequency_results' in config:
                 frequencies['length_frequencies'][len(mutant.active)] += 1
-                mutant.record_node_depths(frequencies)
+                #mutant.record_node_depths(frequencies)
             yield mutant
             if config['speed'] == 'accumulate':
                 # If the mutant is strickly worse, use the last equivalent
