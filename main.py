@@ -144,9 +144,9 @@ def combine_results(results):
 def process_frequencies(config, frequencies):
     as_list = {}
     for key in frequencies.keys():
-        total_for_key = float(sum(frequencies[key].itervalues()))
+        #total_for_key = float(sum(frequencies[key].itervalues()))
         try:
-            as_list[key] = [frequencies[key][index] / total_for_key
+            as_list[key] = [frequencies[key][index]  # / total_for_key
                             for index in range(config['graph_length'])]
         except ZeroDivisionError:
             pass

@@ -62,6 +62,23 @@ if __name__ == '__main__':
             print version, line
             continue
         '''
+        mode_index, highest_non_zero = 0, 0
+        total_index, total = 0, 0
+        lower, upper = 0, 0
+        for index, datum in enumerate(line):
+            if datum > line[mode_index]:
+                mode_index = index
+            if datum != 0:
+                highest_non_zero = index
+            if total < 0.9999:
+                total += datum
+                if lower == 0 and total > 0.025:
+                    lower = index
+                if upper == 0 and total > 0.975:
+                    upper = index
+                if total >= 0.9999:
+                    total_index = index
+        print version, mode_index, lower, upper, total_index, highest_non_zero
         plot(line, label=version, linestyle=next(linecycler),
                linewidth=2.5)
     #ax = gca()
