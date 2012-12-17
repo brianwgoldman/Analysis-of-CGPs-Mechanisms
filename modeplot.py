@@ -45,7 +45,7 @@ if __name__ == '__main__':
             seed = int(seed[:-4])
             with open(filename, 'r') as f:
                 data = json.load(f)
-            raw[problem, int(nodes), version].append(data[1])
+            raw[problem, int(nodes), version].append(data['length_frequencies'])
             filecount += 1
         except ValueError:
             print filename, "FAILED"
@@ -56,14 +56,16 @@ if __name__ == '__main__':
     bests = defaultdict(list)
     for key, results in raw.iteritems():
         problem, nodes, version = key
-        combined = combine_results(results)
-        evals = nan
-        rate = nan
+        combined = [sum(group) for group in zip(*results)]
+        mode = nan
         # Only gather data if median is less than the maximum
-        if combined['evals'][0] < 10000000:
-            evals = combined['evals'][0]
-            bests[version].append((evals, nodes, combined, results))
-        lines[version].append((nodes, evals))
+        if sum(combined) > 0:
+            mode = max(range(len(combined)), key=combined.__getitem__)
+            if len(combined) == 100:
+                print version, len(combined), mode
+            #mode = mode
+            bests[version].append((mode, nodes, combined, results))
+        lines[version].append((mode, nodes))
 
     # Plot the lines using the 'order' order
     for version, line in sorted(lines.iteritems(), key=lambda X: order[X[0]]):
@@ -79,15 +81,16 @@ if __name__ == '__main__':
         clean_x, clean_y = zip(*[(math.log(x), math.log(y)) for x, y in line
                                  if y is not nan])
         order, intercept = stats.linregress(clean_x, clean_y)[0:2]
+        print stats.linregress(clean_x, clean_y)
         print version, order, math.exp(intercept)
         loglog(X, Y, label=pretty_name[version], linestyle=next(linecycler),
                linewidth=2.5)
     #ax = gca()
     #ax.set_yscale('log')
     legend(loc='best')
-    xlabel("Number of Nodes")
-    ylabel("Median Evaluations until Success")
-    #'''
+    ylabel("Number of Nodes")
+    xlabel("Mode Number of Active Nodes")
+    '''
     statify = {}
     print '\tBests'
     print 'version, nodes, (evals, deviation), active nodes'
@@ -103,5 +106,6 @@ if __name__ == '__main__':
         print "%s with Normal" % pretty_name[version],
         print wilcoxon_signed_rank(statify['normal'], data)
         print stats.mannwhitneyu(statify['normal'], data)
+    '''
     savefig(problem + ".eps", dpi=300)
     show()

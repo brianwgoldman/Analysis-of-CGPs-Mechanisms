@@ -22,9 +22,8 @@ from util import wilcoxon_signed_rank, linecycler
 
 # Dictionary converter from original name to name used in paper
 pretty_name = {"normal": "Normal",
-               "single": "Single",
-               "skip": "Skip",
-               "accumulate": "Accumulate"}
+               "reorder": "Reorder",
+               "dag": "DAG", }
 
 # Specifies what order lines should appear in graphs
 order = {'normal': 1,
@@ -34,6 +33,7 @@ order = {'normal': 1,
 
 if __name__ == '__main__':
     # Run through all of the files gathering different seeds into lists
+    '''
     lines = {}
     filecount = 0
     key = sys.argv[1]
@@ -48,7 +48,36 @@ if __name__ == '__main__':
         except ValueError:
             print filename, "FAILED"
     print 'Files Successfully Loaded', filecount
+    '''
 
+    raw = defaultdict(list)
+    filecount = 0
+    for filename in sys.argv[1:]:
+        base = path.basename(filename)
+        try:
+            problem, nodes, version, seed = base.split('_')
+            seed = int(seed[:-4])
+            with open(filename, 'r') as f:
+                data = json.load(f)
+            raw[problem, int(nodes), version].append(data['length_frequencies'])
+            filecount += 1
+        except ValueError:
+            print filename, "FAILED"
+    print 'Files Successfully Loaded', filecount
+
+    #Find line information and best configurations
+    lines = {}
+    bests = defaultdict(list)
+    for key, results in raw.iteritems():
+        problem, nodes, version = key
+        combined = [sum(group) for group in zip(*results)]
+        mode = nan
+        # Only gather data if median is less than the maximum
+        try:
+            total = float(sum(combined))
+            lines[version] = [count / total for count in combined]
+        except ZeroDivisionError:
+            pass
     # Plot the lines using the 'order' order
     for version, line in sorted(lines.iteritems(), key=lambda X: order[X[0]]):
         '''
@@ -79,13 +108,13 @@ if __name__ == '__main__':
                 if total >= 0.9999:
                     total_index = index
         print version, mode_index, lower, upper, total_index, highest_non_zero
-        plot(line, label=version, linestyle=next(linecycler),
+        plot(line, label=pretty_name[version], linestyle=next(linecycler),
                linewidth=2.5)
     #ax = gca()
     #ax.set_yscale('log')
     legend(loc='best')
-    xlabel("Number of Nodes")
-    ylabel("Median Evaluations until Success")
+    xlabel("Number of Active Nodes")
+    ylabel("Frequency of Evolution Individual")
     '''
     statify = {}
     print '\tBests'
@@ -108,5 +137,5 @@ if __name__ == '__main__':
         print "%s with Normal" % pretty_name[version],
         print wilcoxon_signed_rank(statify['normal'], data)
     '''
-    savefig(key + ".eps", dpi=300)
+    savefig("length_frequencies.eps", dpi=300)
     show()
