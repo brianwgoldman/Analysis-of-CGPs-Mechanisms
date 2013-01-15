@@ -114,7 +114,7 @@ if __name__ == '__main__':
     #ax.set_yscale('log')
     legend(loc='best')
     xlabel("Number of Active Nodes")
-    ylabel("Frequency of Evolution Individual")
+    ylabel("Frequency of Evolved Individual")
     '''
     statify = {}
     print '\tBests'
