@@ -77,17 +77,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/WastedEvaluationsinCartesianGeneticProgramming.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/ReducingWastedEvaluationsinCartesianGeneticProgramming.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/WastedEvaluationsinCartesianGeneticProgramming.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/ReducingWastedEvaluationsinCartesianGeneticProgramming.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/WastedEvaluationsinCartesianGeneticProgramming"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/WastedEvaluationsinCartesianGeneticProgramming"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/ReducingWastedEvaluationsinCartesianGeneticProgramming"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/ReducingWastedEvaluationsinCartesianGeneticProgramming"
 	@echo "# devhelp"
 
 epub:
