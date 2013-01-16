@@ -12,7 +12,7 @@ NOTE: You CANNOT use pypy for this as pylab is current unsupported.  Use
 python 2.7 instead.
 '''
 
-from pylab import show, plot, legend, savefig, xlabel, ylabel, nan
+from pylab import show, plot, legend, savefig, xlabel, ylabel
 import json
 import sys
 from os import path

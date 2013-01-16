@@ -250,6 +250,9 @@ if __name__ == '__main__':
             # Output the results, with the combined stuff on the first line
             util.save_list(args.output_results, [combined] + raw_results)
         if args.output_config != None:
+            # Serialize function list
+            config['function_list'] = [func.__name__ for func in
+                                       config['function_list']]
             # Saves the final configuration as a compressed file
             util.save_configuration(args.output_config, config)
         if args.frequency_results != None:
