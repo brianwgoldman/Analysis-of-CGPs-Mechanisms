@@ -163,7 +163,10 @@ def single_bit_set(config):
     Creates the list of all possible binary strings of specified length
     with exactly one set bit.  ``config`` should specify the ``input_length``.
     '''
-    return [map(int, '1'.rjust(i + 1, '0').ljust(config['input_length'], '0'))
+    return [tuple(map(int,
+                      '1'.rjust(i + 1, '0').ljust(config['input_length'], '0')
+                      )
+                  )
             for i in range(config['input_length'])]
 
 

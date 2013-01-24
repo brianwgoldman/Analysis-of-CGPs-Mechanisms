@@ -296,7 +296,7 @@ class Individual(object):
             # Choose an index at random
             index = random.randrange(len(mutant.genes))
             # Get a new value for that gene
-            newval = mutant.random_gene(index)
+            newval = mutant.random_gene(index, mutant.genes[index])
             # If that value is different than the current value
             if newval != mutant.genes[index]:
                 mutant.genes[index] = newval
