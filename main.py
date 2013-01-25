@@ -27,6 +27,7 @@ from evolution import Individual, multi_indepenedent
 import problems
 import util
 from collections import defaultdict
+import gzip
 
 
 def one_run(evaluator, config, frequencies):
@@ -52,7 +53,7 @@ def one_run(evaluator, config, frequencies):
     - ``frequencies``:  Dictionary used to return information about how often
       individuals of different lengths are evolved.
     '''
-    best = Individual(**config)
+    best = None
     last_improved = -1
     output = {}
     generator = enumerate(multi_indepenedent(config, output, frequencies))
@@ -262,3 +263,5 @@ if __name__ == '__main__':
             util.save_configuration(args.frequency_results, processed)
     except KeyError as e:
         print 'You must include a configuration value for', e.args[0]
+    if Individual.recording:
+        Individual.recording.close()

@@ -7,6 +7,8 @@ from copy import copy
 from util import diff_count
 import itertools
 from collections import defaultdict
+import json
+import problems
 
 
 class Individual(object):
@@ -14,6 +16,13 @@ class Individual(object):
     An individual object used to combine gene fitness with genomes, as
     well methods for manipulating those genomes.
     '''
+    pin_counter = itertools.count(0)
+    recording = None
+
+    def record(self):
+        if Individual.recording:
+            Individual.recording.write(self.dump())
+
     def __init__(self, graph_length, input_length, output_length,
                   max_arity, function_list, **_):
         '''
@@ -39,6 +48,9 @@ class Individual(object):
         # If memory problems arise, make this globally shared
         self.scratch = [None] * (graph_length + self.input_length)
         self.fitness = -sys.maxint
+        self.pin = next(Individual.pin_counter)
+        self.parent = self.pin
+        self.record()
 
     def random_gene(self, index, invalid=None):
         '''
@@ -161,7 +173,7 @@ class Individual(object):
                 return option
         return invalid
 
-    def copy(self):
+    def new(self, modification_method, *args, **kwargs):
         '''
         Return a copy of the individual.  Note that individuals are shallow
         copied except for their list of genes.
@@ -169,6 +181,11 @@ class Individual(object):
         # WARNING individuals are shallow copied except for things added here
         new = copy(self)
         new.genes = list(self.genes)
+        new.pin = next(Individual.pin_counter)
+        new.parent = self.pin
+        modification_method(new, *args, **kwargs)
+        new.determine_active_nodes()
+        new.record()
         return new
 
     def connections(self, node_index):
@@ -270,44 +287,33 @@ class Individual(object):
 
     def mutate(self, mutation_rate):
         '''
-        Return a mutated version of this individual using the specified
-        mutation rate.
+        Mutates the calling individual's genes using the give mutation rate.
 
         Parameters:
 
         - ``mutation_rate``: The probability that a specific gene will mutate.
         '''
-        mutant = self.copy()
-        for index in range(len(mutant.genes)):
+        for index in range(len(self.genes)):
             if random.random() < mutation_rate:
-                mutant.genes[index] = mutant.random_gene(index,
-                                                         mutant.genes[index])
-        # Have the mutant recalculate its active genes
-        mutant.determine_active_nodes()
-        return mutant
+                self.genes[index] = self.random_gene(index, self.genes[index])
 
     def one_active_mutation(self, _):
         '''
-        Return a mutated version of this individual using the ``Single``
-        mutation method.
+        Mutates the calling individual using the ``Single`` mutation method.
         '''
-        mutant = self.copy()
         while True:
             # Choose an index at random
-            index = random.randrange(len(mutant.genes))
+            index = random.randrange(len(self.genes))
             # Get a new value for that gene
-            newval = mutant.random_gene(index, mutant.genes[index])
+            newval = self.random_gene(index, self.genes[index])
             # If that value is different than the current value
-            if newval != mutant.genes[index]:
-                mutant.genes[index] = newval
+            if newval != self.genes[index]:
+                self.genes[index] = newval
                 # Determine if that gene was part of an active node
                 node_number = index // self.node_step
                 if (node_number >= self.graph_length or
                     node_number in self.active):
                     break
-        # Have the mutant recalculate its active genes
-        mutant.determine_active_nodes()
-        return mutant
 
     def reorder(self):
         '''
@@ -345,24 +351,24 @@ class Individual(object):
                     addable.append(to_add)
 
         # Create the new individual using the new ordering
-        mutant = self.copy()
+        old_genes = copy(self.genes)
         for node_index in range(self.graph_length):
-            # Find the new starting location in the mutant for this node
-            start = new_order[node_index] * self.node_step
+            # Find the new starting location in the self for this node
+            new_start = new_order[node_index] * self.node_step
+            old_start = node_index * self.node_step
+            new_end = new_start + self.node_step
+            old_end = old_start + self.node_step
             # Move over the function gene
-            mutant.genes[start] = self.genes[node_index * self.node_step]
+            self.genes[new_start] = old_genes[old_start]
             # Translate connection genes to have new order information
             connections = [new_order[conn]
-                           for conn in self.connections(node_index)]
+                           for conn in old_genes[old_start + 1:old_end]]
             # Move over the connection genes
-            mutant.genes[start + 1:start + self.node_step] = connections
+            self.genes[new_start + 1:new_end] = connections
         length = len(self.genes)
         # Update the output locations
         for index in range(length - self.output_length, length):
-            mutant.genes[index] = new_order[self.genes[index]]
-        # Have the mutant recalculate its active genes
-        mutant.determine_active_nodes()
-        return mutant
+            self.genes[index] = new_order[old_genes[index]]
 
     def asym_phenotypic_difference(self, other):
         '''
@@ -430,6 +436,18 @@ class Individual(object):
         '''
         return self.get_fitness() <= other.get_fitness()
 
+    def dump(self):
+        genes = [g if isinstance(g, int) else g.__name__
+                 for g in self.genes]
+        return json.dumps({'pin': self.pin,
+                           'parent': self.parent,
+                           'genes': genes}) + '\n'
+
+    def load(self, string):
+        self.__dict__.update(json.loads(string))
+        self.genes = [g if isinstance(g, int) else problems.__dict__[g]
+                      for g in self.genes]
+
 
 def generate(config, output, frequencies):
     '''
@@ -492,9 +510,9 @@ def generate(config, output, frequencies):
     while True:
         if config['reorder']:
             # Replace the parent with a reordered version of itself
-            parent = parent.reorder()
+            parent = parent.new(Individual.reorder)
         # Create mutant offspring
-        mutants = [parent.mutate(config['mutation_rate'])
+        mutants = [parent.new(Individual.mutate, config['mutation_rate'])
                    for _ in range(config['off_size'])]
         # Determine how many active genes the parent has
         active = config['output_length'] + (len(parent.active) *
@@ -513,7 +531,8 @@ def generate(config, output, frequencies):
                             # As long as there have been no changes,
                             # keep mutating
                             prev = mutant
-                            mutant = prev.mutate(config['mutation_rate'])
+                            mutant = prev.new(Individual.mutate,
+                                              config['mutation_rate'])
                             change = parent.asym_phenotypic_difference(mutant)
             if 'frequency_results' in config:
                 # Records the length of the generated individual

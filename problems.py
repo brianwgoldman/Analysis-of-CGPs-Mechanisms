@@ -2,7 +2,7 @@
 Defines each of the benchmark problems used as well as the function sets
 for those problems.
 '''
-import operator
+from operator import or_, and_, add, sub, mul, div
 import itertools
 import random
 import math
@@ -64,9 +64,9 @@ def arity_controlled(desired):
     return wrap
 
 # Standard lists of operators for different problems to use
-binary_operators = [operator.or_, operator.and_, nand, nor]
-regression_operators = [operator.add, operator.sub,
-                        operator.mul, operator.div]
+binary_operators = [or_, and_, nand, nor]
+regression_operators = [add, sub,
+                        mul, div]
 
 #for unary in [math.sin, math.cos, math.exp, math.log]:
 #    regression_operators.append(arity_controlled(1)(unary))
@@ -366,7 +366,7 @@ class Breadth(Bounded_Problem, Binary_Mixin):
     # Set the data range to be all possible inputs with a single set bit.
     data_range = staticmethod(single_bit_set)
     # Set the list of possible operators to just be OR.
-    operators = [operator.or_]
+    operators = [or_]
 
     def problem_function(self, inputs):
         '''
@@ -382,7 +382,7 @@ class TwoFloor(Bounded_Problem, Binary_Mixin):
     # Set the data range to be all possible inputs with a single set bit.
     data_range = staticmethod(single_bit_set)
     # Set the list of possible operators to just be OR.
-    operators = [operator.or_]
+    operators = [or_]
 
     def problem_function(self, inputs):
         '''
