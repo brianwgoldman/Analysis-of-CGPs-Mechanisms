@@ -413,7 +413,8 @@ class Depth(Problem):
         Returns the fitness of the individual as a percentage of maximum
         fitness.
         '''
-        return individual.evaluate([0])[0] / float(self.config['graph_length'])
+        score = individual.evaluate((0,))[0]
+        return score / float(self.config['graph_length'])
 
 
 class Flat(Problem):
