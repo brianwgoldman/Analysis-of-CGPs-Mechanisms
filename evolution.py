@@ -17,11 +17,6 @@ class Individual(object):
     well methods for manipulating those genomes.
     '''
     pin_counter = itertools.count(0)
-    recording = None
-
-    def record(self):
-        if Individual.recording:
-            Individual.recording.write(self.dump())
 
     def __init__(self, graph_length, input_length, output_length,
                   max_arity, function_list, **_):
@@ -47,10 +42,12 @@ class Individual(object):
         self.determine_active_nodes()
         # If memory problems arise, make this globally shared
         self.scratch = [None] * (graph_length + self.input_length)
+        self.footprint = [0] * graph_length
+        self.input_counter = itertools.count(0)
+        self.input_order = {}
         self.fitness = -sys.maxint
         self.pin = next(Individual.pin_counter)
         self.parent = self.pin
-        self.record()
 
     def random_gene(self, index, invalid=None):
         '''
@@ -181,11 +178,11 @@ class Individual(object):
         # WARNING individuals are shallow copied except for things added here
         new = copy(self)
         new.genes = list(self.genes)
+        new.footprint = list(self.footprint)
         new.pin = next(Individual.pin_counter)
         new.parent = self.pin
         modification_method(new, *args, **kwargs)
         new.determine_active_nodes()
-        new.record()
         return new
 
     def connections(self, node_index):
@@ -274,13 +271,24 @@ class Individual(object):
         # Start by loading the input values into scratch
         # NOTE: Input locations are given as negative values
         self.scratch[-len(inputs):] = inputs[::-1]
+        try:
+            input_number = self.input_order[inputs]
+        except KeyError:
+            input_number = next(self.input_counter)
+            self.input_order[inputs] = input_number
+        on = 1 << input_number
         # Loop through the active genes in order
         for node_index in self.active:
             function = self.genes[node_index * self.node_step]
             args = [self.scratch[con] for con in self.connections(node_index)]
             # Apply the function to the inputs from scratch, saving results
             # back to the scratch
-            self.scratch[node_index] = function(*args)
+            result = function(*args)
+            self.scratch[node_index] = result
+            if result:
+                self.footprint[node_index] |= on
+            else:
+                self.footprint[node_index] &= ~on
         # Extract outputs from the scratch space
         return [self.scratch[output]
                 for output in self.genes[-self.output_length:]]
@@ -352,6 +360,7 @@ class Individual(object):
 
         # Create the new individual using the new ordering
         old_genes = copy(self.genes)
+        old_footprint = copy(self.footprint)
         for node_index in range(self.graph_length):
             # Find the new starting location in the self for this node
             new_start = new_order[node_index] * self.node_step
@@ -365,6 +374,7 @@ class Individual(object):
                            for conn in old_genes[old_start + 1:old_end]]
             # Move over the connection genes
             self.genes[new_start + 1:new_end] = connections
+            self.footprint[new_order[node_index]] = old_footprint[node_index]
         length = len(self.genes)
         # Update the output locations
         for index in range(length - self.output_length, length):
@@ -441,7 +451,10 @@ class Individual(object):
                  for g in self.genes]
         return json.dumps({'pin': self.pin,
                            'parent': self.parent,
-                           'genes': genes}) + '\n'
+                           'genes': genes,
+                           'footprint': self.footprint,
+                           'active': self.active,
+                           'fitness': self.fitness}) + '\n'
 
     def load(self, string):
         self.__dict__.update(json.loads(string))
@@ -509,8 +522,8 @@ def generate(config, output, frequencies):
     yield parent
     while True:
         if config['reorder']:
-            # Replace the parent with a reordered version of itself
-            parent = parent.new(Individual.reorder)
+            # Reorder the parent
+            parent.reorder()
         # Create mutant offspring
         mutants = [parent.new(Individual.mutate, config['mutation_rate'])
                    for _ in range(config['off_size'])]

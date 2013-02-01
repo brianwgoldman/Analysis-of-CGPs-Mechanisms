@@ -68,7 +68,7 @@ binary_operators = [or_, and_, nand, nor]
 regression_operators = [add, sub,
                         mul, div]
 
-#for unary in [math.sin, math.cos, math.exp, math.log]:
+# for unary in [math.sin, math.cos, math.exp, math.log]:
 #    regression_operators.append(arity_controlled(1)(unary))
 
 # Ensures all regression operators are numerically protected
@@ -444,6 +444,16 @@ class Flat(Problem):
                     correct += 1
                 total += 1
         return correct / float(total)
+
+
+class Novel(Problem, Binary_Mixin):
+    def __init__(self, config):
+        self.config = config
+
+    def get_fitness(self, individual):
+        for inputs in binary_range(self.config):
+            individual.evaluate(inputs)
+        return len(set(individual.footprint)) / float(2 ** 2 ** self.config['input_length'])
 
 
 class Active(Problem):

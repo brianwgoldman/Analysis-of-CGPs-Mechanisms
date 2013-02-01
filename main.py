@@ -62,8 +62,9 @@ def one_run(evaluator, config, frequencies):
         if best < individual:
             best = individual
             last_improved = evals
+            best.record()
             if config['verbose']:
-                print '\t', last_improved, best.fitness, len(best.active)
+                print '\t', last_improved, best.get_fitness(), len(best.active)
         if (evals >= config['max_evals'] or
             best.fitness >= config['max_fitness']):
             break
@@ -263,5 +264,3 @@ if __name__ == '__main__':
             util.save_configuration(args.frequency_results, processed)
     except KeyError as e:
         print 'You must include a configuration value for', e.args[0]
-    if Individual.recording:
-        Individual.recording.close()
