@@ -241,10 +241,10 @@ if __name__ == '__main__':
         config['pop_size'] = args.pop_size
 
     if args.duplicate != None:
-        config['duplicate'] = args.speed
+        config['duplicate'] = args.duplicate
 
     if args.ordering != None:
-        config['ordering'] = args.speed
+        config['ordering'] = args.ordering
 
     if args.active_push != None:
         config['active_push'] = args.active_push

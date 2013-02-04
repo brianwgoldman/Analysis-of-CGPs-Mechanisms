@@ -484,7 +484,7 @@ def generate(config, output, frequencies):
       - ``off_size``: The number of offspring to produce per generation.
       - ``output_length``: The number of output variables.
       - ``max_arity``: The maximum arity used by any function.
-      - ``speed``: String specifying the way to handle duplicate
+      - ``duplicate``: String specifying the way to handle duplicate
         individual creation, either ``normal'', ``skip'', ``accumulate``, or
         ``single``.
       - ``active_push``: Determines if fitness should break ties depending on
