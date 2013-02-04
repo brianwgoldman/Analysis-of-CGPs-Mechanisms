@@ -1,70 +1,64 @@
 '''
 Takes file names from the output/ folder and parses the information into
 readable values and produces a graph.  Use this module as an executable to
-process all information for a single problem, such as:
+process all length frequency information for a single problem, such as:
 
-python plotter.py output/multiply*
+python freqplot.py output/neutral_100_*.frq
 
-Do not mix problems in a single run.  The graph will be saved to a .eps file
-named after the problem used.
+Do not mix problems or problem sizes in a single run.
+The graph will be saved to a .eps file named after the problem size used.
 
 NOTE: You CANNOT use pypy for this as pylab is current unsupported.  Use
 python 2.7 instead.
 '''
 
-from pylab import show, plot, legend, savefig, xlabel, ylabel, nan, gca, loglog
+from pylab import show, plot, legend, savefig, xlabel, ylabel
 import json
 import sys
 from os import path
 from collections import defaultdict
-from main import combine_results
-from util import wilcoxon_signed_rank, linecycler
-
-# Dictionary converter from original name to name used in paper
-pretty_name = {"normal": "Normal",
-               "single": "Single",
-               "skip": "Skip",
-               "accumulate": "Accumulate"}
-
-# Specifies what order lines should appear in graphs
-order = {'normal': 1,
-         'reorder': 2,
-         'dag': 3,
-         }
+from util import linecycler, pretty_name, line_order
 
 if __name__ == '__main__':
     # Run through all of the files gathering different seeds into lists
-    lines = {}
+    raw = defaultdict(list)
     filecount = 0
-    key = sys.argv[1]
-    for filename in sys.argv[2:]:
+    name = ''
+    for filename in sys.argv[1:]:
         base = path.basename(filename)
         try:
-            version = base[:-4]
+            problem, nodes, version, seed = base.split('_')
+            name = nodes
+            seed = int(seed[:-4])
             with open(filename, 'r') as f:
                 data = json.load(f)
-            lines[version] = data[key]
+            raw[problem, int(nodes), version].append(data)
             filecount += 1
         except ValueError:
             print filename, "FAILED"
     print 'Files Successfully Loaded', filecount
 
-    # Plot the lines using the 'order' order
-    for version, line in sorted(lines.iteritems(), key=lambda X: order[X[0]]):
-        '''
+    # Find line information and best configurations
+    lines = {}
+    bests = defaultdict(list)
+    for key, results in raw.iteritems():
+        problem, nodes, version = key
+        # Total across all seeds for each length
+        combined = [sum(group) for group in zip(*results)]
+        # Ignore if absolutely no information was recorded
         try:
-            X, Y = zip(*sorted(line))
-            print version
-            for x, y in sorted(line):
-                print x, y
-
-        except ValueError:
-            print version, line
-            continue
-        '''
+            total = float(sum(combined))
+            lines[version] = [count / total for count in combined]
+        except ZeroDivisionError:
+            pass
+    print "Version, Mode, [lower, upper], <99.99%, Highest"
+    # Plot the lines using the 'line_order' order
+    for version, line in sorted(lines.iteritems(),
+                                key=lambda X: line_order[X[0]]):
         mode_index, highest_non_zero = 0, 0
         total_index, total = 0, 0
         lower, upper = 0, 0
+        # Look through the line for empirical information
         for index, datum in enumerate(line):
             if datum > line[mode_index]:
                 mode_index = index
@@ -78,35 +72,13 @@ if __name__ == '__main__':
                     upper = index
                 if total >= 0.9999:
                     total_index = index
-        print version, mode_index, lower, upper, total_index, highest_non_zero
-        plot(line, label=version, linestyle=next(linecycler),
+        bound = "[%i, %i]" % (lower, upper)
+        # Display empirical information
+        print version, mode_index, bound, total_index, highest_non_zero
+        plot(line, label=pretty_name[version], linestyle=next(linecycler),
                linewidth=2.5)
-    #ax = gca()
-    #ax.set_yscale('log')
     legend(loc='best')
-    xlabel("Number of Nodes")
-    ylabel("Median Evaluations until Success")
-    '''
-    statify = {}
-    print '\tBests'
-    print 'version, mutation rate, (evals, deviation),',
-    print 'genes not including output'
-    for version, data in bests.iteritems():
-        score, rate, combined, results = min(datum for datum
-                                             in data if datum[0] is not nan)
-        pretty = pretty_name[version]
-        genes = combined['phenotype'][0] * 3
-        if version != 'normal':
-            print pretty, rate, combined['evals'], genes
-            statify[version] = [result['evals'] for result in results]
-        else:
-            print pretty, rate, combined['normal'], genes
-            statify['normal'] = [result['normal'] for result in results]
-
-    print "\nStatistical Tests"
-    for version, data in statify.iteritems():
-        print "%s with Normal" % pretty_name[version],
-        print wilcoxon_signed_rank(statify['normal'], data)
-    '''
-    savefig(key + ".eps", dpi=300)
+    xlabel("Number of Active Nodes")
+    ylabel("Frequency of Evolved Individual")
+    savefig("length_frequencies_%s.eps" % name, dpi=300)
     show()

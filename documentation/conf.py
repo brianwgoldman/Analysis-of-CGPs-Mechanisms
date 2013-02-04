@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Wasted Evaluations in Cartesian Genetic Programming documentation build configuration file, created by
-# sphinx-quickstart on Tue Oct 30 10:54:54 2012.
+# Length Bias and Search Limitations in Cartesian Genetic Programming documentation build configuration file, created by
+# sphinx-quickstart on Wed Jan 16 10:39:42 2013.
 #
 # This file is execfile()d with the current directory set to its containing dir.
 #
@@ -13,11 +13,10 @@
 
 import sys, os
 
-sys.path.append('/home/goldman/code/')
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+sys.path.insert(0, os.path.abspath('../'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -26,10 +25,10 @@ sys.path.append('/home/goldman/code/')
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.coverage', 'sphinx.ext.viewcode']
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ['sphinx_templates']
 
 # The suffix of source filenames.
 source_suffix = '.rst'
@@ -41,8 +40,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Wasted Evaluations in Cartesian Genetic Programming'
-copyright = u'2012, Brian W. Goldman and William Punch'
+project = u'Length Bias and Search Limitations in Cartesian Genetic Programming'
+copyright = u'2013, Brian W. Goldman'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -65,7 +64,7 @@ release = '1.0'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['sphinx_build']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -121,7 +120,7 @@ html_theme = 'default'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ['sphinx_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -165,7 +164,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'WastedEvaluationsinCartesianGeneticProgrammingdoc'
+htmlhelp_basename = 'LengthBiasandSearchLimitationsinCartesianGeneticProgrammingdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -184,8 +183,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'WastedEvaluationsinCartesianGeneticProgramming.tex', u'Wasted Evaluations in Cartesian Genetic Programming Documentation',
-   u'Brian W. Goldman and William Punch', 'manual'),
+  ('index', 'LengthBiasandSearchLimitationsinCartesianGeneticProgramming.tex', u'Length Bias and Search Limitations in Cartesian Genetic Programming Documentation',
+   u'Brian W. Goldman', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -214,8 +213,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'wastedevaluationsincartesiangeneticprogramming', u'Wasted Evaluations in Cartesian Genetic Programming Documentation',
-     [u'Brian W. Goldman and William Punch'], 1)
+    ('index', 'lengthbiasandsearchlimitationsincartesiangeneticprogramming', u'Length Bias and Search Limitations in Cartesian Genetic Programming Documentation',
+     [u'Brian W. Goldman'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -228,8 +227,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'WastedEvaluationsinCartesianGeneticProgramming', u'Wasted Evaluations in Cartesian Genetic Programming Documentation',
-   u'Brian W. Goldman and William Punch', 'WastedEvaluationsinCartesianGeneticProgramming', 'One line description of project.',
+  ('index', 'LengthBiasandSearchLimitationsinCartesianGeneticProgramming', u'Length Bias and Search Limitations in Cartesian Genetic Programming Documentation',
+   u'Brian W. Goldman', 'LengthBiasandSearchLimitationsinCartesianGeneticProgramming', 'One line description of project.',
    'Miscellaneous'),
 ]
 

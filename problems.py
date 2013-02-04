@@ -2,7 +2,7 @@
 Defines each of the benchmark problems used as well as the function sets
 for those problems.
 '''
-import operator
+from operator import or_, and_, add, sub, mul, div
 import itertools
 import random
 import math
@@ -34,6 +34,7 @@ def protected(function):
     '''
     def inner(*args):
         try:
+            # Call the function on the arguments
             value = function(*args)
             if math.isinf(value):
                 return args[0]
@@ -63,11 +64,11 @@ def arity_controlled(desired):
     return wrap
 
 # Standard lists of operators for different problems to use
-binary_operators = [operator.or_, operator.and_, nand, nor]
-regression_operators = [operator.add, operator.sub,
-                        operator.mul, operator.div]
+binary_operators = [or_, and_, nand, nor]
+regression_operators = [add, sub,
+                        mul, div]
 
-#for unary in [math.sin, math.cos, math.exp, math.log]:
+# for unary in [math.sin, math.cos, math.exp, math.log]:
 #    regression_operators.append(arity_controlled(1)(unary))
 
 # Ensures all regression operators are numerically protected
@@ -75,17 +76,31 @@ regression_operators = [protected(op) for op in regression_operators]
 
 
 class Problem(object):
+    '''
+    The abstract base of a problem
+    '''
     def __init__(self, config):
+        '''
+        Designed to force children of this class to implement this function.
+        Children use this function to set up problem specific initialization
+        from configuration information.
+        '''
         raise NotImplementedError()
 
     def get_fitness(self, individual):
+        '''
+        Designed to force children of this class to implement this function.
+        Children use this function evaluate an individual and
+        return its fitness.
+        '''
         raise NotImplementedError()
 
 
 class Bounded_Problem(object):
     '''
-    Object used to store training input values and expected output values
-    which are used in evaluating individuals.
+    Base object for any problem with a known set of test cases.  Stores a
+    map for all possible inputs to their correct outputs so they only
+    have to be evaluated once.
     '''
 
     def __init__(self, config):
@@ -94,9 +109,6 @@ class Bounded_Problem(object):
 
         Parameters:
 
-        - ``problem_function``: The ground truth function that maps input
-          values to output values.  Should be decorated with the
-          ``problem_attributes`` decorator.
         - ``config``: A dictionary containing the configuration information
           required to fully initialize the problem.  Should include values
           for:
@@ -130,6 +142,11 @@ class Bounded_Problem(object):
         return 1 - (score / float(len(self.training)))
 
     def problem_function(self, _):
+        '''
+        Designed to force children of this class to implement this function.
+        Children use this function to define how to translate an input value
+        into an output value for their problem.
+        '''
         raise NotImplementedError()
 
 
@@ -146,7 +163,10 @@ def single_bit_set(config):
     Creates the list of all possible binary strings of specified length
     with exactly one set bit.  ``config`` should specify the ``input_length``.
     '''
-    return [map(int, '1'.rjust(i + 1, '0').ljust(config['input_length'], '0'))
+    return [tuple(map(int,
+                      '1'.rjust(i + 1, '0').ljust(config['input_length'], '0')
+                      )
+                  )
             for i in range(config['input_length'])]
 
 
@@ -203,29 +223,51 @@ def n_dimensional_grid(config):
 
 
 class Binary_Mixin(object):
+    '''
+    Inheritance mixin useful for setting the class attributes of
+    binary problems.
+    '''
     data_range = staticmethod(binary_range)
     operators = binary_operators
     max_arity = 2
 
 
 class Regression_Mixin(object):
+    '''
+    Inheritance mixin useful for setting the class attributes of
+    regression problems.
+    '''
     data_range = staticmethod(float_range)
     operators = regression_operators
     max_arity = 2
 
 
 class Neutral(Problem):
+    '''
+    Defines the Neutral problem, in which all individuals receive the same
+    fitness.  The only operator in this function is 'None', meaning only
+    connection genes actually evolve.
+    '''
     operators = [None]
     max_arity = 2
 
     def __init__(self, _):
+        '''
+        Doesn't require initialization, but must implement.
+        '''
         pass
 
     def get_fitness(self, _):
+        '''
+        Returns the fitness of passed in individual, which is always 0.
+        '''
         return 0
 
 
 class Even_Parity(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Even Parity problem.
+    '''
     def problem_function(self, inputs):
         '''
         Return the even parity of a list of boolean values.
@@ -234,6 +276,9 @@ class Even_Parity(Bounded_Problem, Binary_Mixin):
 
 
 class Binary_Multiply(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Binary Multiplier problem.
+    '''
     def problem_function(self, inputs):
         '''
         Return the result of performing a binary multiplication of the first
@@ -252,6 +297,9 @@ class Binary_Multiply(Bounded_Problem, Binary_Mixin):
 
 
 class Multiplexer(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Multiplexer (MUX) Problem.
+    '''
     def problem_function(self, inputs):
         '''
         Uses the first k bits as a selector for which of the remaining bits to
@@ -263,6 +311,9 @@ class Multiplexer(Bounded_Problem, Binary_Mixin):
 
 
 class Demultiplexer(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Demultiplexer (DEMUX) Problem.
+    '''
     def problem_function(self, inputs):
         '''
         Returns the last input bit on the output line specified by the binary
@@ -274,6 +325,10 @@ class Demultiplexer(Bounded_Problem, Binary_Mixin):
 
 
 class Binary_Encode(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Binary Encode problem.
+    '''
+    # Set the data range to be all possible inputs with a single set bit.
     data_range = staticmethod(single_bit_set)
 
     def problem_function(self, inputs):
@@ -287,6 +342,10 @@ class Binary_Encode(Bounded_Problem, Binary_Mixin):
 
 
 class Binary_Decode(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Binary Decode problem.
+    '''
+    # Set the data range to be all possible inputs with a single set bit.
     data_range = staticmethod(single_bit_set)
 
     def problem_function(self, inputs):
@@ -300,43 +359,84 @@ class Binary_Decode(Bounded_Problem, Binary_Mixin):
         return base
 
 
-class Bredth(Bounded_Problem, Binary_Mixin):
+class Breadth(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Breadth problem.
+    '''
+    # Set the data range to be all possible inputs with a single set bit.
     data_range = staticmethod(single_bit_set)
-    operators = [operator.or_]
+    # Set the list of possible operators to just be OR.
+    operators = [or_]
 
     def problem_function(self, inputs):
+        '''
+        Returns true as long as at least one input is true.
+        '''
         return [sum(inputs) > 0]
 
 
 class TwoFloor(Bounded_Problem, Binary_Mixin):
+    '''
+    Defines the Two Floor Problem.
+    '''
+    # Set the data range to be all possible inputs with a single set bit.
     data_range = staticmethod(single_bit_set)
-    operators = [operator.or_]
+    # Set the list of possible operators to just be OR.
+    operators = [or_]
 
     def problem_function(self, inputs):
+        '''
+        Returns a string of bits half as long as the input string, where
+        the only set output bit is at the index // 2 of the set input bit.
+        '''
         results = [0] * (len(inputs) // 2)
         results[inputs.index(1) // 2] = 1
         return results
 
 
 class Depth(Problem):
+    '''
+    Defines the Depth problem.
+    '''
+    # Set the list of possible operators to just be just min(X, Y) + 1.
     operators = [lambda X, Y: min(X, Y) + 1]
     max_arity = 2
 
     def __init__(self, config):
+        '''
+        Saves configuration for use during evaluation.
+        '''
         self.config = config
 
     def get_fitness(self, individual):
-        return individual.evaluate([0])[0] / float(self.config['graph_length'])
+        '''
+        Returns the fitness of the individual as a percentage of maximum
+        fitness.
+        '''
+        score = individual.evaluate((0,))[0]
+        return score / float(self.config['graph_length'])
 
 
 class Flat(Problem):
+    '''
+    Defines the Flat problem, in which all individuals receive fitness
+    based on how many connection genes are connected to the input.
+    The only operator in this function is 'None', meaning only
+    connection genes actually evolve.
+    '''
     operators = [None]
     max_arity = 2
 
     def __init__(self, _):
+        '''
+        Doesn't require initialization, but must implement.
+        '''
         pass
 
     def get_fitness(self, individual):
+        '''
+        Returns the percentage of connection genes connected to the input.
+        '''
         correct, total = 0, 0
         for gene in individual.genes:
             if gene is not None:
@@ -346,18 +446,48 @@ class Flat(Problem):
         return correct / float(total)
 
 
+class Novel(Problem, Binary_Mixin):
+    '''
+    Defines the Novel problem, which evaluates individuals based on how many
+    unique footprints the individual can create.
+    '''
+    def __init__(self, config):
+        complete = float(2 ** 2 ** config['input_length'])
+        self.best = float(min(complete, config['graph_length']))
+
+    def get_fitness(self, individual):
+        for inputs in binary_range(self.config):
+            individual.evaluate(inputs)
+        return len(set(individual.footprint)) / self.best
+
+
 class Active(Problem):
+    '''
+    Defines the Active problem, in which all individuals receive fitness
+    based on how many active nodes they have.
+    The only operator in this function is 'None', meaning only
+    connection genes actually evolve.
+    '''
     operators = [None]
     max_arity = 2
 
     def __init__(self, config):
+        '''
+        Saves configuration for use during evaluation.
+        '''
         self.config = config
 
     def get_fitness(self, individual):
+        '''
+        Returns the percentage of nodes that are active.
+        '''
         return len(individual.active) / float(self.config['graph_length'])
 
 
 class Koza_1(Bounded_Problem, Regression_Mixin):
+    '''
+    Defines the Koza-1 problem.
+    '''
     def koza_quartic(self, inputs):
         '''
         Return the result of Koza-1 on the specified input.  Expects the input
@@ -368,6 +498,10 @@ class Koza_1(Bounded_Problem, Regression_Mixin):
 
 
 class Pagie_1(Bounded_Problem, Regression_Mixin):
+    '''
+    Defines the Pagie-1 problem.
+    '''
+    # Set the data range to be an n dimensional grid.
     data_range = staticmethod(n_dimensional_grid)
 
     def pagie(self, inputs):

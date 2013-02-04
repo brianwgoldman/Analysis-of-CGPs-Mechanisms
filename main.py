@@ -1,7 +1,7 @@
 '''
 This module is intended to duplicate the 'main()' function found in other
 languages such as C++ and Java.  In order to run an experiment, this module
-should be passes to your interpreter.  In the interest of speed and consistency
+should be passed to your interpreter.  In the interest of speed and consistency
 we suggest that PyPy 1.9.0 be used to run this code, although
 Python 2.7 should be able to handle it correctly.
 
@@ -11,14 +11,14 @@ To see a full description of this modules command line arguments, run
 Provided with this code should be the ``cfg`` folder which contains some
 configuration files useful for running experiments.  These files can be passed
 to main along with other configuration information in order to recreate
-the experiments performed in the Reducing Wasted Evaluations in Cartesian
-Genetic Programming publication.  For example, the following command runs a
-the ``Accumulate`` mutation method on the Parity problem using seed number
-13 with 3000 nodes in the graph and a mutation rate of 0.01 with verbose
-output turned on, outputting the results to output/test_run.dat.
+the experiments performed in the paper ``Length Bias and Search Limitations in
+Cartesian Genetic Programming``.  For example, the following command performs
+one run of the Breadth problem using seed number 13 with a genome size of
+100 and 101 input bits.  Also, verbose output is printed to the display,
+the ``DAG`` variant is used, and the results are output to output/test_run.dat.
 
-``pypy main.py cfg/once.cfg cfg/parity.cfg -g 3000 -m 0.01
--seed 13 -s accumulate -v -o output/test_run.dat``
+``pypy main.py cfg/once.cfg cfg/breadth.cfg -seed 13 -g 100 -i 101 -v -dag
+-o output/test_run.dat``
 
 For any support questions email brianwgoldman@acm.org.
 '''
@@ -27,6 +27,7 @@ from evolution import Individual, multi_indepenedent
 import problems
 import util
 from collections import defaultdict
+import gzip
 
 
 def one_run(evaluator, config, frequencies):
@@ -49,18 +50,24 @@ def one_run(evaluator, config, frequencies):
         termination.
       - ``max_fitness``: The fitness required to cause a "successful"
         termination.
+    - ``frequencies``:  Dictionary used to return information about how often
+      individuals of different lengths are evolved.
     '''
-    best = Individual(**config)
+    best = None
     last_improved = -1
-    output = {}
+    output = {'bests': []}
     generator = enumerate(multi_indepenedent(config, output, frequencies))
     for evals, individual in generator:
         individual.fitness = evaluator.get_fitness(individual)
         if best < individual:
             best = individual
             last_improved = evals
+            genes = best.dump_genes()
+            output['bests'].append({'genes': genes,
+                                    'fitness': best.get_fitness(),
+                                    'evals': evals})
             if config['verbose']:
-                print '\t', last_improved, best.fitness, len(best.active)
+                print '\t', last_improved, best.get_fitness(), len(best.active)
         if (evals >= config['max_evals'] or
             best.fitness >= config['max_fitness']):
             break
@@ -70,14 +77,20 @@ def one_run(evaluator, config, frequencies):
     output.update({'fitness': best.fitness, 'evals': evals,
                    'success': best.fitness >= config['max_fitness'],
                    'phenotype': len(best.active),
-                   'normal': output['skipped'] + evals})
+                   'normal': output['skipped'] + evals,
+                   'unused': sum(best.never_active)})
     return output
 
 
 def all_runs(config):
     '''
-    Perform all of the requested runs on a given problem.  Returns a list of
-    the dictionaries returned by ``one_run``.  Will give results for all
+    Perform all of the requested runs on a given problem.  Returns a two part
+    tuple:
+
+    - list of the dictionaries returned by ``one_run``.
+    - frequency information collected by ``one_run``.
+
+    Will give results for all
     completed runs if a keyboard interrupt is received.
 
     Parameters:
@@ -91,20 +104,18 @@ def all_runs(config):
         run experiments on.
       - ``runs``: How many runs to perform
     '''
+    # Construct the problem object
     evaluator = problems.__dict__[config['problem']](config)
+    # Set configuration information from the problem
     config['function_list'] = evaluator.operators
     config['max_arity'] = evaluator.max_arity
     results = []
-    frequencies = {'length_frequencies': defaultdict(int),
-                  'depth_min': defaultdict(int),
-                  'depth_max': defaultdict(int),
-                  'depth_disparity': defaultdict(int),
-                  'depth_total': defaultdict(int)}
+    frequencies = defaultdict(int)
     try:
         for run in range(config['runs']):
             print "Starting Run", run + 1
             result = one_run(evaluator, config, frequencies)
-            print result
+            print [(key, result[key]) for key in ['evals', 'fitness']]
             results.append(result)
     except KeyboardInterrupt:
         print "Interrupted"
@@ -133,7 +144,10 @@ def combine_results(results):
                 combined[key] = [value]
     # Analyze the values for each key
     for key, value in combined.items():
-        combined[key] = util.median_deviation(value)
+        try:
+            combined[key] = util.median_deviation(value)
+        except TypeError:
+            del combined[key]
     try:
         combined['success'] = len(successful) / float(len(results)), 0
     except ZeroDivisionError:
@@ -141,22 +155,18 @@ def combine_results(results):
     return combined
 
 
-def process_frequencies(config, frequencies):
-    as_list = {}
-    for key in frequencies.keys():
-        #total_for_key = float(sum(frequencies[key].itervalues()))
-        try:
-            as_list[key] = [frequencies[key][index]  # / total_for_key
-                            for index in range(config['graph_length'])]
-        except ZeroDivisionError:
-            pass
-    return as_list
+def frequencies_to_vector(config, frequencies):
+    '''
+    Returns a flattened version of the frequencies dictionary.
+    '''
+    return [frequencies[index] for index in range(config['graph_length'])]
 
 if __name__ == '__main__':
     import argparse
     import random
     import sys
 
+    # Set up argument parsing
     description = 'Cartesian Genetic Programming.  In Python!'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('configs', metavar='Configuration Files',
@@ -200,6 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('-profile', dest='profile', action='store_true',
                         help='Include this flag to run a profiler')
 
+    # Perform argument parsing
     args = parser.parse_args()
     config = util.load_configurations(args.configs)
     config['verbose'] = args.verbose
@@ -212,6 +223,7 @@ if __name__ == '__main__':
         config['seed'] = random.randint(0, sys.maxint)
     random.seed(config['seed'])
 
+    # Allow the command line to override configuration file specifications
     if args.graph_length != None:
         config['graph_length'] = args.graph_length
 
@@ -240,15 +252,22 @@ if __name__ == '__main__':
         sys.exit()
 
     try:
+        # Perform the actual run of the experiment
         raw_results, frequencies = all_runs(config)
-        combined = combine_results(raw_results).items()
-        print sorted(combined)
+        combined = sorted(combine_results(raw_results).items())
+        print combined
         if args.output_results != None:
+            # Output the results, with the combined stuff on the first line
             util.save_list(args.output_results, [combined] + raw_results)
         if args.output_config != None:
+            # Serialize function list
+            config['function_list'] = [func.__name__ for func in
+                                       config['function_list']]
+            # Saves the final configuration as a compressed file
             util.save_configuration(args.output_config, config)
         if args.frequency_results != None:
-            processed = process_frequencies(config, frequencies)
+            # Saves the frequency information
+            processed = frequencies_to_vector(config, frequencies)
             util.save_configuration(args.frequency_results, processed)
     except KeyError as e:
         print 'You must include a configuration value for', e.args[0]

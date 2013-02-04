@@ -2,6 +2,7 @@
 Collection of utility functions with no other obvious home.
 '''
 from itertools import izip, cycle
+from collections import defaultdict
 import json
 import os
 import math
@@ -182,5 +183,35 @@ def wilcoxon_signed_rank(d1, d2):
         z = 0
     return abs(total), pairs, std, z
 
+
+def entropy(data):
+    unique = defaultdict(int)
+    for d in data:
+        unique[d] += 1
+    total = float(len(data))
+    return -sum((count / total) * math.log(count / total, 2)
+                for count in unique.values())
+
+
+def bitcount(integer):
+    count = 0
+    while (integer):
+        if integer & 1 == 1:
+            count += 1
+        integer >>= 1
+
+    return count
+
 # Generator used when plotting to cylce through the different line styles
 linecycler = cycle(["-", "--", "-.", ":"])
+
+# Dictionary converter from original name to name used in paper
+pretty_name = {"normal": "Normal",
+               "reorder": "Reorder",
+               "dag": "DAG", }
+
+# Specifies what order lines should appear in graphs
+line_order = {'normal': 1,
+              'reorder': 2,
+              'dag': 3,
+              }
