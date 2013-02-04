@@ -193,6 +193,15 @@ def entropy(data):
                 for count in unique.values())
 
 
+def bitcount(integer):
+    count = 0
+    while (integer):
+        if integer & 1 == 1:
+            count += 1
+        integer >>= 1
+
+    return count
+
 # Generator used when plotting to cylce through the different line styles
 linecycler = cycle(["-", "--", "-.", ":"])
 

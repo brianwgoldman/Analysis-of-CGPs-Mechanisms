@@ -55,14 +55,17 @@ def one_run(evaluator, config, frequencies):
     '''
     best = None
     last_improved = -1
-    output = {}
+    output = {'bests': []}
     generator = enumerate(multi_indepenedent(config, output, frequencies))
     for evals, individual in generator:
         individual.fitness = evaluator.get_fitness(individual)
         if best < individual:
             best = individual
             last_improved = evals
-            best.record()
+            genes = best.dump_genes()
+            output['bests'].append({'genes': genes,
+                                    'fitness': best.get_fitness(),
+                                    'evals': evals})
             if config['verbose']:
                 print '\t', last_improved, best.get_fitness(), len(best.active)
         if (evals >= config['max_evals'] or
@@ -74,7 +77,8 @@ def one_run(evaluator, config, frequencies):
     output.update({'fitness': best.fitness, 'evals': evals,
                    'success': best.fitness >= config['max_fitness'],
                    'phenotype': len(best.active),
-                   'normal': output['skipped'] + evals})
+                   'normal': output['skipped'] + evals,
+                   'unused': sum(best.never_active)})
     return output
 
 
@@ -111,7 +115,7 @@ def all_runs(config):
         for run in range(config['runs']):
             print "Starting Run", run + 1
             result = one_run(evaluator, config, frequencies)
-            print result
+            print [(key, result[key]) for key in ['evals', 'fitness']]
             results.append(result)
     except KeyboardInterrupt:
         print "Interrupted"
@@ -140,7 +144,10 @@ def combine_results(results):
                 combined[key] = [value]
     # Analyze the values for each key
     for key, value in combined.items():
-        combined[key] = util.median_deviation(value)
+        try:
+            combined[key] = util.median_deviation(value)
+        except TypeError:
+            del combined[key]
     try:
         combined['success'] = len(successful) / float(len(results)), 0
     except ZeroDivisionError:

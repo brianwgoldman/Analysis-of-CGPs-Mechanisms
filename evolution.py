@@ -4,7 +4,7 @@ Handles how to perform all of the actual evolution.
 import random
 import sys
 from copy import copy
-from util import diff_count
+from util import diff_count, bitcount
 import itertools
 from collections import defaultdict
 import json
@@ -40,9 +40,13 @@ class Individual(object):
         self.genes = [self.random_gene(index) for index in
                       range(graph_length * self.node_step + output_length)]
         self.determine_active_nodes()
-        # If memory problems arise, make this globally shared
+        # Block of memory used when evaluating an individual
         self.scratch = [None] * (graph_length + self.input_length)
+        # Records the output for each node.  NOTE: Footprints are only
+        # updated when a node is active
         self.footprint = [0] * graph_length
+        # Records with indices have ever been active
+        self.never_active = [True] * graph_length
         self.input_counter = itertools.count(0)
         self.input_order = {}
         self.fitness = -sys.maxint
@@ -179,6 +183,7 @@ class Individual(object):
         new = copy(self)
         new.genes = list(self.genes)
         new.footprint = list(self.footprint)
+        new.never_active = list(self.never_active)
         new.pin = next(Individual.pin_counter)
         new.parent = self.pin
         modification_method(new, *args, **kwargs)
@@ -289,6 +294,7 @@ class Individual(object):
                 self.footprint[node_index] |= on
             else:
                 self.footprint[node_index] &= ~on
+            self.never_active[node_index] = False
         # Extract outputs from the scratch space
         return [self.scratch[output]
                 for output in self.genes[-self.output_length:]]
@@ -361,6 +367,7 @@ class Individual(object):
         # Create the new individual using the new ordering
         old_genes = copy(self.genes)
         old_footprint = copy(self.footprint)
+        old_n_a = copy(self.never_active)
         for node_index in range(self.graph_length):
             # Find the new starting location in the self for this node
             new_start = new_order[node_index] * self.node_step
@@ -375,10 +382,12 @@ class Individual(object):
             # Move over the connection genes
             self.genes[new_start + 1:new_end] = connections
             self.footprint[new_order[node_index]] = old_footprint[node_index]
+            self.never_active[new_order[node_index]] = old_n_a[node_index]
         length = len(self.genes)
         # Update the output locations
         for index in range(length - self.output_length, length):
             self.genes[index] = new_order[old_genes[index]]
+        self.determine_active_nodes()
 
     def asym_phenotypic_difference(self, other):
         '''
@@ -446,15 +455,9 @@ class Individual(object):
         '''
         return self.get_fitness() <= other.get_fitness()
 
-    def dump(self):
-        genes = [g if isinstance(g, int) else g.__name__
-                 for g in self.genes]
-        return json.dumps({'pin': self.pin,
-                           'parent': self.parent,
-                           'genes': genes,
-                           'footprint': self.footprint,
-                           'active': self.active,
-                           'fitness': self.fitness}) + '\n'
+    def dump_genes(self):
+        return [g if isinstance(g, int) else g.__name__
+                for g in self.genes]
 
     def load(self, string):
         self.__dict__.update(json.loads(string))
@@ -499,6 +502,12 @@ def generate(config, output, frequencies):
     '''
     output['skipped'] = 0
     output['estimated'] = 0
+    output['inactive_bits_changed'] = defaultdict(int)
+    output['reactivated_nodes'] = defaultdict(int)
+    output['active_nodes_changed'] = defaultdict(int)
+    output['active_bits_changed'] = defaultdict(int)
+    output['child_replaced_parent'] = 0
+    output['parent_not_replaced'] = 0
     if config['dag']:
         # Override base functions with dag versions
         Individual.determine_active_nodes = \
@@ -557,7 +566,31 @@ def generate(config, output, frequencies):
                 mutants[index] = prev if mutant < parent else mutant
         best_child = max(mutants)
         if parent <= best_child:
+            parent_active = set(parent.active)
+            re_active = 0
+            active_changed = 0
+            for newly_active in best_child.active:
+                if parent.never_active[newly_active]:
+                    # You can't get change information if its never existed.
+                    continue
+                prev = parent.footprint[newly_active]
+                now = best_child.footprint[newly_active]
+                change = bitcount(now ^ prev)
+                if newly_active in parent_active:
+                    if change > 0:
+                        active_changed += 1
+                        output['active_bits_changed'][change] += 1
+                else:
+                    # Was inactive in parent
+                    re_active += 1
+                    output['inactive_bits_changed'][change] += 1
+            output['reactivated_nodes'][re_active] += 1
+            output['active_nodes_changed'][active_changed] += 1
+            output['child_replaced_parent'] += 1
+            # Replace the parent with the child
             parent = best_child
+        else:
+            output['parent_not_replaced'] += 1
 
 
 def multi_indepenedent(config, output, frequencies):
