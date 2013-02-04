@@ -447,13 +447,18 @@ class Flat(Problem):
 
 
 class Novel(Problem, Binary_Mixin):
+    '''
+    Defines the Novel problem, which evaluates individuals based on how many
+    unique footprints the individual can create.
+    '''
     def __init__(self, config):
-        self.config = config
+        complete = float(2 ** 2 ** config['input_length'])
+        self.best = float(min(complete, config['graph_length']))
 
     def get_fitness(self, individual):
         for inputs in binary_range(self.config):
             individual.evaluate(inputs)
-        return len(set(individual.footprint)) / float(2 ** 2 ** self.config['input_length'])
+        return len(set(individual.footprint)) / self.best
 
 
 class Active(Problem):
