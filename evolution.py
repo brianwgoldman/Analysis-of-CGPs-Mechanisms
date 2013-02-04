@@ -508,13 +508,13 @@ def generate(config, output, frequencies):
     output['active_bits_changed'] = defaultdict(int)
     output['child_replaced_parent'] = 0
     output['parent_not_replaced'] = 0
-    if config['dag']:
+    if config['ordering'] == 'dag':
         # Override base functions with dag versions
         Individual.determine_active_nodes = \
         Individual.dag_determine_active_nodes
         Individual.random_gene = \
         Individual.dag_random_gene
-    if config['speed'] == 'single':
+    if config['duplicate'] == 'single':
         # Override normal mutation with Single
         Individual.mutate = Individual.one_active_mutation
     if config['active_push'] == 'more':
@@ -530,7 +530,7 @@ def generate(config, output, frequencies):
     # Evaluate initial individual
     yield parent
     while True:
-        if config['reorder']:
+        if config['ordering'] == 'reorder':
             # Reorder the parent
             parent.reorder()
         # Create mutant offspring
@@ -542,13 +542,13 @@ def generate(config, output, frequencies):
         for index, mutant in enumerate(mutants):
             output['estimated'] += (1 - config['mutation_rate']) ** active
             prev = mutant
-            if config['speed'] not in ['normal', 'single']:
+            if config['duplicate'] not in ['normal', 'single']:
                 change = parent.asym_phenotypic_difference(mutant)
                 if change == 0:
                     output['skipped'] += 1
-                    if config['speed'] == 'skip':
+                    if config['duplicate'] == 'skip':
                         continue
-                    if config['speed'] == 'accumulate':
+                    if config['duplicate'] == 'accumulate':
                         while change == 0:
                             # As long as there have been no changes,
                             # keep mutating
@@ -561,7 +561,7 @@ def generate(config, output, frequencies):
                 frequencies[len(mutant.active)] += 1
             # Send the offspring out to be evaluated
             yield mutant
-            if config['speed'] == 'accumulate':
+            if config['duplicate'] == 'accumulate':
                 # If the mutant is strickly worse, use the last equivalent
                 mutants[index] = prev if mutant < parent else mutant
         best_child = max(mutants)

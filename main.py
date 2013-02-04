@@ -63,9 +63,10 @@ def one_run(evaluator, config, frequencies):
             best = individual
             last_improved = evals
             genes = best.dump_genes()
-            output['bests'].append({'genes': genes,
-                                    'fitness': best.get_fitness(),
-                                    'evals': evals})
+            if config['record_bests']:
+                output['bests'].append({'genes': genes,
+                                        'fitness': best.get_fitness(),
+                                        'evals': evals})
             if config['verbose']:
                 print '\t', last_improved, best.get_fitness(), len(best.active)
         if (evals >= config['max_evals'] or
@@ -184,18 +185,22 @@ if __name__ == '__main__':
                         help='Use the specified population size.')
     parser.add_argument('-seed', dest='seed', type=int,
                         help='Use the specified random seed used')
-    parser.add_argument('-s', dest='speed', type=str,
+    parser.add_argument('-duplicate', dest='duplicate', type=str,
                         help='Specifies if evolution should should avoid' +
                         ' duplicated evaluations.  Valid settings are: ' +
                         'normal, skip, accumulate, single')
+    parser.add_argument('-ordering', dest='ordering', type=str,
+                        help='Specifies how to handle node ordering.' +
+                        '  Valid settings are: ' +
+                        'normal, reorder, dag')
     parser.add_argument('-a', dest='active_push', type=str,
                         help='Specifies if evolution should bias toward' +
-                        'more or less active genes.  Valid settings are: ' +
+                        ' more or less active genes.  Valid settings are: ' +
                         'none, more, less')
-    parser.add_argument('-r', dest='reorder', action='store_true',
-                        help='Include this flag to have mutant reordering')
-    parser.add_argument('-dag', dest='dag', action='store_true',
-                        help='Include this flag for full dag representation')
+    parser.add_argument('-record_bests', dest='record_bests',
+                        action='store_true',
+                        help='Include this flag to record the full genome' +
+                        ' of the first individual to reach each new fitness.')
     parser.add_argument('-c', dest='output_config', type=str,
                         help='Outputs a single configuration file containing' +
                         ' the entire configuration used in this run')
@@ -214,8 +219,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = util.load_configurations(args.configs)
     config['verbose'] = args.verbose
-    config['reorder'] = args.reorder
-    config['dag'] = args.dag
+    config['record_bests'] = args.record_bests
 
     if args.seed != None:
         config['seed'] = args.seed
@@ -236,8 +240,11 @@ if __name__ == '__main__':
     if args.pop_size != None:
         config['pop_size'] = args.pop_size
 
-    if args.speed != None:
-        config['speed'] = args.speed
+    if args.duplicate != None:
+        config['duplicate'] = args.speed
+
+    if args.ordering != None:
+        config['ordering'] = args.speed
 
     if args.active_push != None:
         config['active_push'] = args.active_push
