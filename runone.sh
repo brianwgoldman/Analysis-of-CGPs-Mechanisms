@@ -1,3 +1,4 @@
+#!/bin/bash
 PROBLEM=$1
 DUPLICATE=$2
 ORDERING=$3

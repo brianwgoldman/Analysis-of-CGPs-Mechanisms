@@ -13,9 +13,11 @@ def generator():
                         yield problem, duplicate, ordering, nodes, mut
 
 seed = sys.argv[1]
-to_add = int(sys.argv[2])
-complete = int(sys.argv[3])
+to_add = 256 - int(sys.argv[2])
 added = 0
+with open('complete.txt', 'r') as f:
+    complete = int(f.read())
+print 'Complete', complete, 'Adding', to_add
 
 for index, config in enumerate(generator()):
     if index >= complete:
@@ -25,4 +27,7 @@ for index, config in enumerate(generator()):
         added += 1
         if added >= to_add:
             break
+
+with open('complete.txt', 'w') as f:
+    f.write(str(index + 1) + '\n')
 print index + 1
