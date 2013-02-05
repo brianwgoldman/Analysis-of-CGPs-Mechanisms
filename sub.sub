@@ -1,0 +1,11 @@
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=80:00:00
+#PBS -j oe
+#PBS -N SEED_PROBLEM_DUPLICATE_ORDERING_NODES_MUT
+#PBS -o /mnt/scratch/goldma72/${PBS_JOBNAME}.tmp
+
+## Put pypy into the path
+PATH=$PATH:/mnt/home/goldma72/bin
+cd ${PBS_O_WORKDIR}
+
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -duplicate DUPLICATE -ordering ORDERING -seed SEED -o output/PROBLEM_DUPLICATE_ORDERING_NODES_MUT_SEED.dat
