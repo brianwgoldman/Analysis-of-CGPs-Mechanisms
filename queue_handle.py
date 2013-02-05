@@ -12,15 +12,16 @@ def generator():
                                 0.002, 0.001, 0.0005, 0.0002]:
                         yield problem, duplicate, ordering, nodes, mut
 
-seed = int(sys.argv[1])
+seed = sys.argv[1]
 to_add = int(sys.argv[2])
 complete = int(sys.argv[3])
 added = 0
 
 for index, config in enumerate(generator()):
     if index >= complete:
-        seeded = config + (seed,)
-        call(['./runone.sh', '%s %s %s %i %f %i' % seeded])
+        command = ['./runone.sh'] + map(str, config) + [seed]
+        if call(command):
+            print "NON ZERO!"
         added += 1
         if added >= to_add:
             break
