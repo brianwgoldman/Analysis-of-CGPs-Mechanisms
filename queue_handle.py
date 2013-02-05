@@ -20,7 +20,7 @@ added = 0
 for index, config in enumerate(generator()):
     if index >= complete:
         seeded = config + (seed,)
-        call(['./test.sh', '%s %s %s %i %f %i' % seeded])
+        call(['./runone.sh', '%s %s %s %i %f %i' % seeded])
         added += 1
         if added >= to_add:
             break
