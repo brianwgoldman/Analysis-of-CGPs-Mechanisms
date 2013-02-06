@@ -1,5 +1,6 @@
 import sys
 from subprocess import call
+from os import path
 
 
 def generator():
@@ -15,16 +16,22 @@ def generator():
 seed = sys.argv[1]
 to_add = 256 - int(sys.argv[2])
 added = 0
-with open('complete.txt', 'r') as f:
-    complete = int(f.read())
+try:
+    with open('complete.txt', 'r') as f:
+        complete = int(f.read())
+except (ValueError, IOError):
+    complete = 0
 print 'Complete', complete, 'Adding', to_add
 
 for index, config in enumerate(generator()):
     if index >= complete:
-        command = ['./runone.sh'] + map(str, config) + [seed]
-        if call(command):
-            print "NON ZERO!"
-        added += 1
+        arguments = map(str, config) + [seed]
+        # if output file already exists, skip it
+        file_would_be = path.join('output', '_'.join(arguments) + '.dat')
+        if not path.exists(file_would_be):
+            if call(['./runone.sh'] + arguments):
+                print "NON ZERO!"
+            added += 1
         if added >= to_add:
             break
 
