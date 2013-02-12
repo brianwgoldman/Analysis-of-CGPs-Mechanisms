@@ -33,6 +33,7 @@ for index, config in enumerate(generator(low, high)):
         # if output file already exists, skip it
         file_would_be = path.join('output', '_'.join(arguments) + '.dat')
         if not path.exists(file_would_be):
+            print arguments
             if call(['./runone.sh'] + arguments):
                 print "NON ZERO!"
             added += 1
