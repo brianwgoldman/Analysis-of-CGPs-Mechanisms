@@ -345,9 +345,6 @@ class Binary_Decode(Bounded_Problem, Binary_Mixin):
     '''
     Defines the Binary Decode problem.
     '''
-    # Set the data range to be all possible inputs with a single set bit.
-    data_range = staticmethod(single_bit_set)
-
     def problem_function(self, inputs):
         '''
         Returns a 1 on the output line specified by the binary input index
