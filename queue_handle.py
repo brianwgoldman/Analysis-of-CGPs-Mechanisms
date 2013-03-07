@@ -19,6 +19,9 @@ def generator(low, high):
 low = int(sys.argv[1])
 high = int(sys.argv[2])
 to_add = 256 - int(sys.argv[3])
+if to_add == 0 or to_add >= 256:
+    print "Queue Full"
+    sys.exit()
 added = 0
 try:
     with open('complete.txt', 'r') as f:
