@@ -29,6 +29,10 @@ low = int(sys.argv[1])
 high = int(sys.argv[2])
 to_add = 256 - int(sys.argv[3])
 
+if to_add == 0 or to_add >= 256:
+    print "Queue Full"
+    sys.exit()
+
 if len(sys.argv) <= 4:
     generator = base_generator(low, high)
 else:
