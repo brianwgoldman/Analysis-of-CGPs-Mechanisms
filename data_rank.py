@@ -10,12 +10,22 @@ def dict_of_lists():
 
 gather = defaultdict(dict_of_lists)
 select = int(sys.argv[1])
-for filename in sys.argv[2:]:
+whitelist = set()
+with open(sys.argv[2], 'r') as f:
+    for line in f.readlines():
+        whitelist.add(tuple(json.loads(line)))
+
+for filename in sys.argv[3:]:
     try:
         with open(filename, 'r') as f:
             data = json.load(f)
         base = path.basename(filename)
         problem, duplicate, ordering, nodes, mut, seed = base.split('_')
+        if len(whitelist) != 0:
+            if (problem, duplicate, ordering, nodes, mut) not in whitelist:
+                # Not in the white list, skip it
+                continue
+
         tuning = gather[problem, duplicate, ordering]
         tuning[nodes, mut].append(data[1]['evals'])
     except ValueError as e:
