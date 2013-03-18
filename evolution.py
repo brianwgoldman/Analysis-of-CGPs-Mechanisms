@@ -331,7 +331,7 @@ class Individual(object):
 
     def reorder(self):
         '''
-        Return an individual who's genes have been reordered randomly without
+        Reorder individual's genes randomly without
         changing any of the actual connection information.
         '''
         # Build a list of dependencies
