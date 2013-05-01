@@ -67,6 +67,8 @@ def one_run(evaluator, config, frequencies):
                 output['bests'].append({'genes': genes,
                                         'fitness': best.get_fitness(),
                                         'evals': evals})
+                output['test_inputs'] = sorted(best.input_order.keys(),
+                                               key=best.input_order.__getitem__)
             if config['verbose']:
                 print '\t', last_improved, best.get_fitness(), len(best.active)
         if (evals >= config['max_evals'] or
@@ -270,7 +272,7 @@ if __name__ == '__main__':
             # Serialize function list
             config['function_list'] = [func.__name__ for func in
                                        config['function_list']]
-            # Saves the final configuration as a compressed file
+            # Saves the final configuration as a single file
             util.save_configuration(args.output_config, config)
         if args.frequency_results != None:
             # Saves the frequency information
