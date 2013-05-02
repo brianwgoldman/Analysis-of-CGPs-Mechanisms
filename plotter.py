@@ -22,7 +22,7 @@ import sys
 from os import path
 from collections import defaultdict
 from main import combine_results
-from util import linecycler, pretty_name, line_order
+from util import linecycler, pretty_name, line_order, set_fonts
 
 if __name__ == '__main__':
     # Run through all of the files gathering different seeds into lists
@@ -41,7 +41,8 @@ if __name__ == '__main__':
             print filename, "FAILED"
     print 'Files Successfully Loaded', filecount
 
-    #Find line information and best configurations
+    set_fonts()
+    # Find line information and best configurations
     lines = defaultdict(list)
     bests = defaultdict(list)
     for key, results in raw.iteritems():
