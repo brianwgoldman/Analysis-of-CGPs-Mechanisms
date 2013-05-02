@@ -5,7 +5,7 @@ import json
 
 
 def base_generator(low, high):
-    for problem in ['encode', 'decode', 'multiply', 'parity']:
+    for problem in ['encode', 'decode', 'multiply', 'parity', 'mux']:
         for ordering in ['normal', 'reorder', 'dag']:
             for nodes in [50, 100, 200, 500, 1000, 2000, 5000, 10000]:
                 for seed in range(low, high + 1):
@@ -27,9 +27,10 @@ def next_level(low, high, filename):
 
 low = int(sys.argv[1])
 high = int(sys.argv[2])
-to_add = 256 - int(sys.argv[3])
+queue_size = 256
+to_add = queue_size - int(sys.argv[3])
 
-if to_add <= 0 or to_add >= 256:
+if to_add <= 0 or to_add >= queue_size:
     print "Queue Full"
     sys.exit()
 
