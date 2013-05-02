@@ -44,7 +44,7 @@ class Individual(object):
         self.scratch = [None] * (graph_length + self.input_length)
         # Records the output for each node.  NOTE: Footprints are only
         # updated when a node is active
-        self.footprint = [0] * graph_length
+        self.footprint = [0] * (graph_length + self.input_length)
         # Records with indices have ever been active
         self.never_active = [True] * graph_length
         self.input_counter = itertools.count(0)
@@ -281,6 +281,10 @@ class Individual(object):
         except KeyError:
             input_number = next(self.input_counter)
             self.input_order[inputs] = input_number
+            on = 1 << input_number
+            for index in range(-len(inputs), 0):
+                if self.scratch[index]:
+                    self.footprint[index] |= on
         on = 1 << input_number
         # Loop through the active genes in order
         for node_index in self.active:

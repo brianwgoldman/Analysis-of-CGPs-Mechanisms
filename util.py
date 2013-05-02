@@ -6,6 +6,7 @@ from collections import defaultdict
 import json
 import os
 import math
+import gzip
 
 
 def diff_count(data1, data2):
@@ -15,50 +16,57 @@ def diff_count(data1, data2):
     return sum(x != y for x, y in izip(data1, data2))
 
 
-def load_configurations(filenames, file_method=open):
+def open_file_method(filename):
+    extension = filename.split('.')[-1]
+    if extension == 'gz':
+        return gzip.open
+    return open
+
+
+def load_configurations(filenames):
     '''
     Given a list of files containing json encoded dictionaries, combined
-    the data into a single dictionary.
+    the data into a single dictionary.  Will attempt to use file extension
+    to detect correct file type.
 
     Parameters:
 
     - ``filenames``: The list of files paths.
-    - ``file_method``: The method to open the file with.  Defaults to ``open``.
-      Can be used to read compressed configurations.
     '''
     result = {}
     for filename in filenames:
+        file_method = open_file_method(filename)
         with file_method(filename, 'r') as f:
             result.update(json.load(f))
     return result
 
 
-def save_configuration(filename, data, file_method=open):
+def save_configuration(filename, data):
     '''
-    Write a dictionary to the specified file in json format.
+    Write a dictionary to the specified file in json format.  Will attempt to
+    use file extension to detect correct file type.
 
     Parameters
 
     - ``filename``: The path to write to.
     - ``data``: The data to be written.
-    - ``file_method``: The method to open the file with.  Defaults to ``open``.
-      Can be used to write compressed configurations.
     '''
+    file_method = open_file_method(filename)
     with file_method(filename, 'w') as f:
         json.dump(data, f)
 
 
-def save_list(filename, data, file_method=open):
+def save_list(filename, data):
     '''
     Write a list of dictionaries to the file in a more human readable way.
+    Will attempt to use file extension to detect correct file type.
 
     Parameters
 
     - ``filename``: The path to write to.
     - ``data``: The list of dictionaries to be written.
-    - ``file_method``: The method to open the file with.  Defaults to ``open``.
-      Can be used to write compressed configurations.
     '''
+    file_method = open_file_method(filename)
     with file_method(filename, 'w') as f:
         f.write('[' + os.linesep)
         for lineNumber, line in enumerate(data):
@@ -201,6 +209,19 @@ def bitcount(integer):
         integer >>= 1
 
     return count
+
+
+def set_fonts():
+    '''
+    Configures matplotlib to use only Type 1 fonts, and sets the figure size
+    such that those fonts will be legible when the figure is inserted in
+    a publication.
+    '''
+    import matplotlib
+    matplotlib.rcParams['ps.useafm'] = True
+    matplotlib.rcParams['pdf.use14corefonts'] = True
+    matplotlib.rcParams['text.usetex'] = True
+    matplotlib.pyplot.figure(figsize=(7, 5))
 
 # Generator used when plotting to cylce through the different line styles
 linecycler = cycle(["-", "--", "-.", ":"])
