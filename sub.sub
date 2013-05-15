@@ -8,4 +8,4 @@
 PATH=$PATH:/mnt/home/goldma72/bin
 cd ${PBS_O_WORKDIR}
 
-pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -duplicate DUPLICATE -ordering ORDERING -seed SEED -o output/PROBLEM_DUPLICATE_ORDERING_NODES_MUT_SEED.dat
+pypy main.py cfg/once.cfg cfg/PROBLEM.cfg -g NODES -m MUT -duplicate DUPLICATE -ordering ORDERING -seed SEED -out output/PROBLEM_DUPLICATE_ORDERING_NODES_MUT_SEED.dat

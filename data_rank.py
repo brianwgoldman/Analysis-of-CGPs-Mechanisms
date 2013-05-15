@@ -2,7 +2,7 @@ import sys
 import json
 from os import path
 from collections import defaultdict
-from util import find_median
+from util import find_median, open_file_method
 
 
 def dict_of_lists():
@@ -23,7 +23,7 @@ for filename in sys.argv[3:]:
             if (problem, duplicate, ordering, nodes, mut) not in whitelist:
                 # Not in the white list, skip it
                 continue
-        with open(filename, 'r') as f:
+        with open_file_method(filename)(filename, 'r') as f:
             data = json.load(f)
         tuning = gather[problem, duplicate, ordering]
         tuning[nodes, mut].append(data[1]['evals'])
