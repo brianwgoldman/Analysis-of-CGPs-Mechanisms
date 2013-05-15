@@ -399,18 +399,17 @@ class Individual(object):
         number of nodes necessary to produce the same function.
         '''
         # Find nodes which depend on their own footprints
-        reachable = {i: {self.footprint[i]: {i}}
+        reachable = {i: {self.footprint[i]}
                      for i in range(-self.input_length, 0)}
         ignore = set()
         for node_index in self.active:
-            direct = defaultdict(set)
+            direct = set()
             for conn in self.connections(node_index):
-                for foot, options in reachable[conn].items():
-                    direct[foot] = direct[foot] | options
+                direct |= reachable[conn]
             if self.footprint[node_index] in direct:
                 ignore.add(node_index)
             else:
-                direct[self.footprint[node_index]] = {node_index}
+                direct.add(self.footprint[node_index])
             reachable[node_index] = direct
 
         # For each footprint, find all useful nodes that produce that footprint
@@ -431,13 +430,13 @@ class Individual(object):
             working, pre_anscestry = next(pre_required.iteritems())
             del pre_required[working]
             covered = pre_covered | {working}
+            anscestry = pre_anscestry | {working}
 
             # Try each option for covering this requirement
             for node_index in identical[working]:
                 included = pre_included | {node_index}
                 required = defaultdict(set, pre_required)
                 for conn in self.connections(node_index):
-                    anscestry = pre_anscestry | {working}
                     if self.footprint[conn] in anscestry:
                         # Can't use this option, as it creates a cycle
                         break
