@@ -524,7 +524,7 @@ class Individual(object):
         for node_index in self.active:
             node_start = self.node_step * node_index
             print node_index, self.genes[node_start],
-            print self.connections(node_index)
+            print self.connections(node_index), self.footprint[node_index]
         print self.genes[-self.output_length:]
 
     def get_fitness(self):

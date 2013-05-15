@@ -187,6 +187,8 @@ if __name__ == '__main__':
                         help='Use the specified mutation rate.')
     parser.add_argument('-i', dest='input_length', type=int,
                         help='The number of input nodes in the CGP graph')
+    parser.add_argument('-o', dest='output_length', type=int,
+                        help='The number of output nodes in the CGP graph')
     parser.add_argument('-pop_size', dest='pop_size', type=int,
                         help='Use the specified population size.')
     parser.add_argument('-seed', dest='seed', type=int,
@@ -213,7 +215,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', dest='verbose', action='store_true',
                         help='Include this flag to increase periodic output')
 
-    parser.add_argument('-o', dest='output_results', type=str,
+    parser.add_argument('-out', dest='output_results', type=str,
                         help='Specify a file to output the results.')
     parser.add_argument('-freq', dest='frequency_results', type=str,
                         help='Specify a file to output the frequency results.')
@@ -242,6 +244,9 @@ if __name__ == '__main__':
 
     if args.input_length != None:
         config['input_length'] = args.input_length
+
+    if args.output_length != None:
+        config['output_length'] = args.output_length
 
     if args.pop_size != None:
         config['pop_size'] = args.pop_size
