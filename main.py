@@ -77,6 +77,10 @@ def one_run(evaluator, config, frequencies):
     if config['verbose']:
         print "Best Found"
         best.show_active()
+        print 'Fitness before simplification', best.fitness
+        best.simplify()
+        print "Fitness after simplification", evaluator.get_fitness(best)
+        best.show_active()
     output.update({'fitness': best.fitness, 'evals': evals,
                    'success': best.fitness >= config['max_fitness'],
                    'phenotype': len(best.active),
