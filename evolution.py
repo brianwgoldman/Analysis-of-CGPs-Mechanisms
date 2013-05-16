@@ -395,102 +395,18 @@ class Individual(object):
 
     def simplify(self):
         '''
-        Uses footprint information to reduce the individual to the minimum
-        number of nodes necessary to produce the same function.
+        Requires serial genome
         '''
-        # Find nodes which depend on their own footprints
-        reachable = {i: {self.footprint[i]}
-                     for i in range(-self.input_length, 0)}
-        ignore = set()
-        for node_index in self.active:
-            direct = set()
-            for conn in self.connections(node_index):
-                direct |= reachable[conn]
-            if self.footprint[node_index] in direct:
-                ignore.add(node_index)
-            else:
-                direct.add(self.footprint[node_index])
-            reachable[node_index] = direct
-
-        # For each footprint, find all useful nodes that produce that footprint
-        identical = defaultdict(list)
-        for node_index in self.active:
-            if node_index not in ignore:
-                identical[self.footprint[node_index]].append(node_index)
-
-        def recurse(pre_required, pre_covered, pre_included, best):
-            # Try all possible ways to cover requirements
-            if len(pre_required) == 0:
-                # Solved
-                return pre_included
-            if len(pre_included) + len(pre_required) >= len(best):
-                # No solution possible better than best in this branch
-                return best
-            # Pop a requirement, mark it as satisfied
-            working, pre_anscestry = next(pre_required.iteritems())
-            del pre_required[working]
-            covered = pre_covered | {working}
-            anscestry = pre_anscestry | {working}
-
-            # Try each option for covering this requirement
-            for node_index in identical[working]:
-                included = pre_included | {node_index}
-                required = defaultdict(set, pre_required)
-                for conn in self.connections(node_index):
-                    if self.footprint[conn] in anscestry:
-                        # Can't use this option, as it creates a cycle
-                        break
-                    if self.footprint[conn] not in covered:
-                        required[self.footprint[conn]] |= anscestry
-                else:
-                    solution = recurse(required, covered, included, best)
-                    if len(solution) < len(best):
-                        best = solution
-            return best
-
-        # Set up initial data structures for recursion
-        covered = {self.footprint[i] for i in range(-self.input_length, 0)}
-        requires = {self.footprint[self.genes[output]]: set()
-                    for output in range(-self.output_length, 0)
-                    if self.footprint[self.genes[output]] not in covered}
-        worst = set(self.active)
-
-        # Get the list of nodes that should actually be kept
-        useful = recurse(requires, covered, set(), worst)
-
-        # Build bidirectional footprint requirements
-        requires = defaultdict(set)
-        satisfies = defaultdict(set)
-        for node_index in useful:
-            for conn in self.connections(node_index):
-                foot = self.footprint[conn]
-                requires[node_index].add(foot)
-                satisfies[foot].add(node_index)
-
-        # Construct the new genome
-        new_genes = []
-        addable = [i for i in range(-self.input_length, 0)]
         lookup = {self.footprint[i]: i for i in range(-self.input_length, 0)}
-        index = 0
-        while addable:
-            working = addable.pop()
-            if working >= 0:
-                # Translate and move over the working node's genes
-                new_genes.append(self.genes[working * self.node_step])
-                for conn in self.connections(working):
-                    new_genes.append(lookup[self.footprint[conn]])
-                # Record the new location for this node's footprint
-                lookup[self.footprint[working]] = index
-                index += 1
-            foot = self.footprint[working]
-            for update in satisfies[foot]:
-                requires[update].remove(foot)
-                if len(requires[update]) == 0:
-                    addable.append(update)
-        self.graph_length = index
-        self.genes = new_genes + [lookup[self.footprint[o]]
-                                  for o in self.genes[-self.output_length:]]
-        self.active = range(self.graph_length)
+        for node_index in reversed(self.active):
+            lookup[self.footprint[node_index]] = node_index
+        for index in range(len(self.genes)):
+            if isinstance(self.genes[index], int):
+                try:
+                    self.genes[index] = lookup[self.footprint[self.genes[index]]]
+                except KeyError:
+                    pass
+        self.determine_active_nodes()
 
     def asym_phenotypic_difference(self, other):
         '''
@@ -562,8 +478,8 @@ class Individual(object):
         return [g if isinstance(g, int) else g.__name__
                 for g in self.genes]
 
-    def load(self, string):
-        self.__dict__.update(json.loads(string))
+    def load(self, data):
+        self.__dict__.update(data)
         self.genes = [g if isinstance(g, int) else problems.__dict__[g]
                       for g in self.genes]
 
