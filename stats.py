@@ -58,4 +58,3 @@ if __name__ == '__main__':
         print 'Active', median_deviation(active[version])
         print 'Mann Whitney U against Control',
         print mannwhitneyu(statify[control_group], data)
-        print "Raw", sorted(data)
