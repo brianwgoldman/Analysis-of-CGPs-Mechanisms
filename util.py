@@ -202,13 +202,7 @@ def entropy(data):
 
 
 def bitcount(integer):
-    count = 0
-    while (integer):
-        if integer & 1 == 1:
-            count += 1
-        integer >>= 1
-
-    return count
+    return bin(integer).count('1')
 
 
 def set_fonts():

@@ -7,7 +7,6 @@ from copy import copy
 from util import diff_count, bitcount
 import itertools
 from collections import defaultdict
-import json
 import problems
 
 
@@ -397,13 +396,16 @@ class Individual(object):
         '''
         Requires serial genome
         '''
-        lookup = {self.footprint[i]: i for i in range(-self.input_length, 0)}
+        lookup = {}
         for node_index in reversed(self.active):
             lookup[self.footprint[node_index]] = node_index
+        for i in range(-self.input_length, 0):
+            lookup[self.footprint[i]] = i
         for index in range(len(self.genes)):
             if isinstance(self.genes[index], int):
                 try:
-                    self.genes[index] = lookup[self.footprint[self.genes[index]]]
+                    foot = self.footprint[self.genes[index]]
+                    self.genes[index] = lookup[foot]
                 except KeyError:
                     pass
         self.determine_active_nodes()
@@ -478,10 +480,45 @@ class Individual(object):
         return [g if isinstance(g, int) else g.__name__
                 for g in self.genes]
 
+    def dump(self):
+        genes = self.dump_genes()
+        never_active = ''.join(str(int(x)) for x in self.never_active)
+        return {'genes': genes,
+                'fitness': self.fitness,
+                'never_active': never_active,
+                'graph_length': self.graph_length,
+                'max_arity': self.node_step - 1,
+                'output_length': self.output_length,
+                'input_length': self.input_length}
+
     def load(self, data):
         self.__dict__.update(data)
+        self.never_active = [x == '1' for x in data['never_active']]
         self.genes = [g if isinstance(g, int) else problems.__dict__[g]
                       for g in self.genes]
+
+    @staticmethod
+    def reconstruct_individual(data, test_inputs):
+        copy = dict(data)
+        copy['function_list'] = [None]
+        individual = Individual(**copy)
+        individual.load(data)
+        # Ensure it is serial
+        for node_index in range(individual.graph_length):
+            for conn in individual.connections(node_index):
+                if conn > node_index:
+                    individual.reorder()
+                    break
+        # Store a copy of the never active genes after reorder
+        never_active = list(individual.never_active)
+        # Set footprint values
+        individual.active = range(individual.graph_length)
+        for inputs in test_inputs:
+            individual.evaluate(tuple(inputs))
+        individual.determine_active_nodes()
+        individual.never_active = never_active
+
+        return individual
 
 
 def generate(config, output, frequencies):

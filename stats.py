@@ -18,6 +18,7 @@ from collections import defaultdict
 from util import median_deviation, open_file_method
 from scipy.stats.mstats import kruskalwallis, mannwhitneyu
 from numpy.ma import masked_array
+from evolution import Individual
 
 
 def make_rectangular(data, fill):
@@ -30,6 +31,7 @@ if __name__ == '__main__':
     # Run through all of the files gathering different seeds into lists
     statify = defaultdict(list)
     active = defaultdict(list)
+    reduced = defaultdict(list)
     filecount = 0
     control_group = None
     for filename in sys.argv[1:]:
@@ -43,6 +45,11 @@ if __name__ == '__main__':
                 control_group = version
             statify[version].append(data[1]['evals'])
             active[version].append(data[1]['phenotype'])
+            best = data[1]['bests'][-1]
+            test = data[1]['test_inputs']
+            individual = Individual.reconstruct_individual(best, test)
+            simplified = individual.new(Individual.simplify)
+            reduced[version].append(len(simplified.active))
             filecount += 1
         except ValueError:
             print filename, "FAILED"
@@ -56,5 +63,6 @@ if __name__ == '__main__':
         print '--------- %s ---------' % str(version)
         print "MES, MAD", median_deviation(data)
         print 'Active', median_deviation(active[version])
+        print 'Reduced', median_deviation(reduced[version])
         print 'Mann Whitney U against Control',
         print mannwhitneyu(statify[control_group], data)

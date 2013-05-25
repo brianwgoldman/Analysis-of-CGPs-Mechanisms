@@ -27,7 +27,6 @@ from evolution import Individual, multi_indepenedent
 import problems
 import util
 from collections import defaultdict
-import gzip
 
 
 def one_run(evaluator, config, frequencies):
@@ -62,11 +61,10 @@ def one_run(evaluator, config, frequencies):
         if best < individual:
             best = individual
             last_improved = evals
-            genes = best.dump_genes()
             if config['record_bests']:
-                output['bests'].append({'genes': genes,
-                                        'fitness': best.get_fitness(),
-                                        'evals': evals})
+                save = best.dump()
+                save['evals'] = evals
+                output['bests'].append(save)
                 output['test_inputs'] = sorted(best.input_order.keys(),
                                                key=best.input_order.__getitem__)
             if config['verbose']:
@@ -76,11 +74,12 @@ def one_run(evaluator, config, frequencies):
             break
     if config['verbose']:
         print "Best Found"
+        print 'Before simplify', best.fitness, len(best.active)
         best.show_active()
-        print 'Fitness before simplification', best.fitness, len(best.active)
-        best.simplify()
-        print "Fitness after simplification", evaluator.get_fitness(best), len(best.active)
-        best.show_active()
+        simplified = best.new(Individual.simplify)
+        simplified.fitness = evaluator.get_fitness(simplified)
+        print "After simplify", simplified.fitness, len(simplified.active)
+        simplified.show_active()
     output.update({'fitness': best.fitness, 'evals': evals,
                    'success': best.fitness >= config['max_fitness'],
                    'phenotype': len(best.active),
