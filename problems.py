@@ -2,7 +2,7 @@
 Defines each of the benchmark problems used as well as the function sets
 for those problems.
 '''
-from operator import or_, and_, add, sub, mul, div
+from operator import or_, and_, add, sub, mul, div, xor
 import itertools
 import random
 import math
@@ -20,6 +20,10 @@ def nor(x, y):
     Simple Nor function for inclusion in function sets.
     '''
     return not (x or y)
+
+
+def and_neg_in(x, y):
+    return (not x) and y
 
 
 def protected(function):
@@ -294,6 +298,10 @@ class Binary_Multiply(Bounded_Problem, Binary_Mixin):
         # pad the result to have enough bits
         extended = multiplied.rjust(len(inputs), '0')
         return map(int, extended)
+
+
+class Binary_Multiply_Miller(Binary_Multiply):
+    operators = [and_, and_neg_in, xor, or_]
 
 
 class Multiplexer(Bounded_Problem, Binary_Mixin):
