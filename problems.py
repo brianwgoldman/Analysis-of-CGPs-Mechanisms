@@ -304,6 +304,10 @@ class Binary_Multiply_Miller(Binary_Multiply):
     operators = [and_, and_neg_in, xor, or_]
 
 
+class Binary_Multiply_Torresen(Binary_Multiply):
+    operators = [and_, xor]
+
+
 class Multiplexer(Bounded_Problem, Binary_Mixin):
     '''
     Defines the Multiplexer (MUX) Problem.
