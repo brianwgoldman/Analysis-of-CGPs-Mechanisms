@@ -215,7 +215,7 @@ def set_fonts():
     matplotlib.rcParams['ps.useafm'] = True
     matplotlib.rcParams['pdf.use14corefonts'] = True
     matplotlib.rcParams['text.usetex'] = True
-    matplotlib.pyplot.figure(figsize=(7, 5))
+    matplotlib.pyplot.figure(figsize=(5, 5))
 
 # Generator used when plotting to cylce through the different line styles
 linecycler = cycle(["-", "--", "-.", ":"])
@@ -223,7 +223,10 @@ linecycler = cycle(["-", "--", "-.", ":"])
 # Dictionary converter from original name to name used in paper
 pretty_name = {"normal": "Normal",
                "reorder": "Reorder",
-               "dag": "DAG", }
+               "dag": "DAG",
+               "single": "Single",
+               "skip": "Skip",
+               "accumulate": "Accumulate"}
 
 # Specifies what order lines should appear in graphs
 line_order = {'normal': 1,
