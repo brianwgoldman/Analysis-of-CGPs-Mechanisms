@@ -3,7 +3,7 @@ Takes file names from the final/ folder and parses the information into
 readable values and produces statistical measures.  Use this module as an
 executable to process all result information for a single problem, such as:
 
-python stats.py final/multiply*.dat
+python stats.py final/multiply*.dat.gz
 
 Do not mix problems in a single run.
 
@@ -22,6 +22,10 @@ from evolution import Individual
 
 
 def make_rectangular(data, fill):
+    '''
+    Given data, a list of lists, square off the rows and return a matrix,
+    with empty spaces being ``filled.``
+    '''
     width = len(max(data, key=len))
     return [masked_array(line + [fill] * (width - len(line)),
                          [False] * len(line) + [True] * (width - len(line)))
@@ -37,6 +41,7 @@ if __name__ == '__main__':
     for filename in sys.argv[1:]:
         base = path.basename(filename)
         try:
+            # Determine the settings from the filename
             problem, dup, ordering, nodes, mut, seed = base.split('_')
             with open_file_method(filename)(filename, 'r') as f:
                 data = json.load(f)

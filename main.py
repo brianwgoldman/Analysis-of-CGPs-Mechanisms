@@ -11,14 +11,14 @@ To see a full description of this modules command line arguments, run
 Provided with this code should be the ``cfg`` folder which contains some
 configuration files useful for running experiments.  These files can be passed
 to main along with other configuration information in order to recreate
-the experiments performed in the paper ``Length Bias and Search Limitations in
-Cartesian Genetic Programming``.  For example, the following command performs
-one run of the Breadth problem using seed number 13 with a genome size of
-100 and 101 input bits.  Also, verbose output is printed to the display,
-the ``DAG`` variant is used, and the results are output to output/test_run.dat.
+the experiments performed in the paper ``Analysis of Cartesian Genetic Programming's
+Evolutionary Mechanisms``.  For example, the following command performs
+one run of the Parity problem using seed number 13 with a genome size of
+2000.  Also, verbose output is printed to the display,
+the ``reorder`` variant is used, and the results are output to output/test_run.dat.
 
-``pypy main.py cfg/once.cfg cfg/breadth.cfg -seed 13 -g 100 -i 101 -v -dag
--o output/test_run.dat``
+``pypy main.py cfg/once.cfg cfg/parity.cfg -seed 13 -g 200 -v -ordering reorder
+-out test_run.dat``
 
 For any support questions email brianwgoldman@acm.org.
 '''
@@ -50,7 +50,7 @@ def one_run(evaluator, config, frequencies):
       - ``max_fitness``: The fitness required to cause a "successful"
         termination.
     - ``frequencies``:  Dictionary used to return information about how often
-      individuals of different lengths are evolved.
+      individuals of different lengths are evolved.  Set by evolution.generate.
     '''
     best = None
     last_improved = -1
@@ -68,7 +68,7 @@ def one_run(evaluator, config, frequencies):
                 output['test_inputs'] = sorted(best.input_order.keys(),
                                                key=best.input_order.__getitem__)
             if config['verbose']:
-                print '\t', last_improved, best.get_fitness(), len(best.active)
+                print '\t', last_improved, best.fitness, len(best.active)
         if (evals >= config['max_evals'] or
             best.fitness >= config['max_fitness']):
             break
@@ -200,10 +200,6 @@ if __name__ == '__main__':
                         help='Specifies how to handle node ordering.' +
                         '  Valid settings are: ' +
                         'normal, reorder, dag')
-    parser.add_argument('-a', dest='active_push', type=str,
-                        help='Specifies if evolution should bias toward' +
-                        ' more or less active genes.  Valid settings are: ' +
-                        'none, more, less')
     parser.add_argument('-record_bests', dest='record_bests',
                         action='store_true',
                         help='Include this flag to record the full genome' +
@@ -255,9 +251,6 @@ if __name__ == '__main__':
 
     if args.ordering != None:
         config['ordering'] = args.ordering
-
-    if args.active_push != None:
-        config['active_push'] = args.active_push
 
     if args.frequency_results != None:
         config['frequency_results'] = args.frequency_results

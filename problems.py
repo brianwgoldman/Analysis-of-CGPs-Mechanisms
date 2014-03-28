@@ -54,7 +54,7 @@ def arity_controlled(desired):
     Decorator used to make functions take any number of inputs while only
     using the first ``desired`` number of arguments.  For example, you can
     pass 10 arguments to a function that takes only 1 if ``desired=1`` and
-    the first of the arguments will actually be used.
+    the first of the arguments will actually be used.  Currently unused.
 
     Parameters:
 
@@ -71,9 +71,6 @@ def arity_controlled(desired):
 binary_operators = [or_, and_, nand, nor]
 regression_operators = [add, sub,
                         mul, div]
-
-# for unary in [math.sin, math.cos, math.exp, math.log]:
-#    regression_operators.append(arity_controlled(1)(unary))
 
 # Ensures all regression operators are numerically protected
 regression_operators = [protected(op) for op in regression_operators]
@@ -458,7 +455,7 @@ class Flat(Problem):
 class Novel(Problem, Binary_Mixin):
     '''
     Defines the Novel problem, which evaluates individuals based on how many
-    unique footprints the individual can create.
+    unique semantics the individual can create.
     '''
     def __init__(self, config):
         complete = float(2 ** 2 ** config['input_length'])
@@ -467,7 +464,7 @@ class Novel(Problem, Binary_Mixin):
     def get_fitness(self, individual):
         for inputs in binary_range(self.config):
             individual.evaluate(inputs)
-        return len(set(individual.footprint)) / self.best
+        return len(set(individual.semantics)) / self.best
 
 
 class Active(Problem):

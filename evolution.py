@@ -15,7 +15,6 @@ class Individual(object):
     An individual object used to combine gene fitness with genomes, as
     well methods for manipulating those genomes.
     '''
-    pin_counter = itertools.count(0)
 
     def __init__(self, graph_length, input_length, output_length,
                   max_arity, function_list, **_):
@@ -41,16 +40,14 @@ class Individual(object):
         self.determine_active_nodes()
         # Block of memory used when evaluating an individual
         self.scratch = [None] * (graph_length + self.input_length)
-        # Records the output for each node.  NOTE: Footprints are only
+        # Records the output for each node.  NOTE: semantics are only
         # updated when a node is active
-        self.footprint = [0] * (graph_length + self.input_length)
+        self.semantics = [0] * (graph_length + self.input_length)
         # Records with indices have ever been active
         self.never_active = [True] * graph_length
         self.input_counter = itertools.count(0)
         self.input_order = {}
         self.fitness = -sys.maxint
-        self.pin = next(Individual.pin_counter)
-        self.parent = self.pin
 
     def random_gene(self, index, invalid=None):
         '''
@@ -181,10 +178,8 @@ class Individual(object):
         # WARNING individuals are shallow copied except for things added here
         new = copy(self)
         new.genes = list(self.genes)
-        new.footprint = list(self.footprint)
+        new.semantics = list(self.semantics)
         new.never_active = list(self.never_active)
-        new.pin = next(Individual.pin_counter)
-        new.parent = self.pin
         modification_method(new, *args, **kwargs)
         new.determine_active_nodes()
         return new
@@ -280,10 +275,11 @@ class Individual(object):
         except KeyError:
             input_number = next(self.input_counter)
             self.input_order[inputs] = input_number
+            # Bit mask used to turn on specific bits in the semantics
             on = 1 << input_number
             for index in range(-len(inputs), 0):
                 if self.scratch[index]:
-                    self.footprint[index] |= on
+                    self.semantics[index] |= on
         on = 1 << input_number
         # Loop through the active genes in order
         for node_index in self.active:
@@ -293,10 +289,11 @@ class Individual(object):
             # back to the scratch
             result = function(*args)
             self.scratch[node_index] = result
+            # Records what the output was for this node on this input
             if result:
-                self.footprint[node_index] |= on
+                self.semantics[node_index] |= on
             else:
-                self.footprint[node_index] &= ~on
+                self.semantics[node_index] &= ~on
             self.never_active[node_index] = False
         # Extract outputs from the scratch space
         return [self.scratch[output]
@@ -369,7 +366,7 @@ class Individual(object):
 
         # Create the new individual using the new ordering
         old_genes = copy(self.genes)
-        old_footprint = copy(self.footprint)
+        old_semantics = copy(self.semantics)
         old_n_a = copy(self.never_active)
         for node_index in range(self.graph_length):
             # Find the new starting location in the self for this node
@@ -384,7 +381,7 @@ class Individual(object):
                            for conn in old_genes[old_start + 1:old_end]]
             # Move over the connection genes
             self.genes[new_start + 1:new_end] = connections
-            self.footprint[new_order[node_index]] = old_footprint[node_index]
+            self.semantics[new_order[node_index]] = old_semantics[node_index]
             self.never_active[new_order[node_index]] = old_n_a[node_index]
         length = len(self.genes)
         # Update the output locations
@@ -394,18 +391,24 @@ class Individual(object):
 
     def simplify(self):
         '''
-        Requires serial genome
+        Using the semantic information recorded for each node, this
+        will modify the individual to ensure only 1 node produces each
+        unique semantic.
         '''
         lookup = {}
+        # Keeps track of 1 index for each unique semantic, favoring
+        # nodes near the start of the active list
         for node_index in reversed(self.active):
-            lookup[self.footprint[node_index]] = node_index
+            lookup[self.semantics[node_index]] = node_index
+        # All input locations take priority for producing their semantics.
         for i in range(-self.input_length, 0):
-            lookup[self.footprint[i]] = i
+            lookup[self.semantics[i]] = i
+        # Replace all connections to use saved index to produce the required semantic.
         for index in range(len(self.genes)):
             if isinstance(self.genes[index], int):
                 try:
-                    foot = self.footprint[self.genes[index]]
-                    self.genes[index] = lookup[foot]
+                    semantic = self.semantics[self.genes[index]]
+                    self.genes[index] = lookup[semantic]
                 except KeyError:
                     pass
         self.determine_active_nodes()
@@ -441,46 +444,32 @@ class Individual(object):
         for node_index in self.active:
             node_start = self.node_step * node_index
             print node_index, self.genes[node_start],
-            print self.connections(node_index), self.footprint[node_index]
+            print self.connections(node_index), self.semantics[node_index]
         print self.genes[-self.output_length:]
-
-    def get_fitness(self):
-        '''
-        Returns the fitness of the individual.
-        '''
-        return self.fitness
-
-    def more_active(self):
-        '''
-        Returns a tuple of (fitness, # of active nodes).  Can be used to
-        override get_fitness to cause selection to favor longer individuals.
-        '''
-        return (self.fitness, len(self.active))
-
-    def less_active(self):
-        '''
-        Returns a tuple of (fitness, -# of active nodes).  Can be used to
-        override get_fitness to cause selection to favor shorter individuals.
-        '''
-        return (self.fitness, -len(self.active))
 
     def __lt__(self, other):
         '''
-        Returns the result of self.get_fitness() < other.get_fitness().
+        Returns the result of self.fitness < other.fitness.
         '''
-        return self.get_fitness() < other.get_fitness()
+        return self.fitness < other.fitness
 
     def __le__(self, other):
         '''
-        Returns the result of self.get_fitness() <= other.get_fitness().
+        Returns the result of self.fitness <= other.fitness.
         '''
-        return self.get_fitness() <= other.get_fitness()
+        return self.fitness <= other.fitness
 
     def dump_genes(self):
+        '''
+        Returns a file read/writable representation of the individuals genes.
+        '''
         return [g if isinstance(g, int) else g.__name__
                 for g in self.genes]
 
     def dump(self):
+        '''
+        Returns a json ready dictionary representation of the entire individual
+        '''
         genes = self.dump_genes()
         never_active = ''.join(str(int(x)) for x in self.never_active)
         return {'genes': genes,
@@ -492,6 +481,10 @@ class Individual(object):
                 'input_length': self.input_length}
 
     def load(self, data):
+        '''
+        Recovers a "dump"ed individual from the dictionary,
+        overwriting the calling individual.
+        '''
         self.__dict__.update(data)
         self.never_active = [x == '1' for x in data['never_active']]
         self.genes = [g if isinstance(g, int) else problems.__dict__[g]
@@ -499,6 +492,10 @@ class Individual(object):
 
     @staticmethod
     def reconstruct_individual(data, test_inputs):
+        '''
+        Recovers an individual's connections and never active node listing.
+        Used when post processing individuals from previous runs.
+        '''
         copy = dict(data)
         copy['function_list'] = [None]
         individual = Individual(**copy)
@@ -511,7 +508,7 @@ class Individual(object):
                     break
         # Store a copy of the never active genes after reorder
         never_active = list(individual.never_active)
-        # Set footprint values
+        # Set semantics values
         individual.active = range(individual.graph_length)
         for inputs in test_inputs:
             individual.evaluate(tuple(inputs))
@@ -543,16 +540,25 @@ def generate(config, output, frequencies):
       - ``duplicate``: String specifying the way to handle duplicate
         individual creation, either ``normal'', ``skip'', ``accumulate``, or
         ``single``.
-      - ``active_push``: Determines if fitness should break ties depending on
-        number of active nodes.
-        Valid settings are ``none``, ``more``, or ``less``.
       - ``problem``: The problem these individuals are solving.  Used on in
         the case where problems require unusual individual modification.
     - ``output``: Dictionary used to return information about evolution, will
       send out:
 
-      - ``skipped``: The number of individuals skipped by ``Skip``.
-      - ``estimated``: The estimated number of individuals that are skippable.
+      - ``skipped``: The number of evaluations skipped by ``Skip``.
+      - ``estimated``: The estimated number of evaluations that are skippable.
+      - ``inactive_bits_changed``: Keeps track of nodes that were active, became
+        inactive, and have become active again, looking at how many bits in their
+        semantics have changed.  Is a dictionary of frequencies mapping change -> count.
+      - ``reactiveated_nodes``: Counts the number of nodes that were active,
+        became inactive, and have become active again.
+      - ``active_nodes_changed``: Counts how many nodes that were active before and
+        after mutation had at least one bit in their semantics change.  Is a dictionary
+        mapping number changed in a single mutation -> count.
+      - ``active_bits_changed``: Counts how many bits were changed when an active
+        node was changed by mutation but remained active.
+      - ``child_replaced_parent``: Counts how often the parent is replaced by the offspring.
+      - ``parent_not_replaced``: Counts how often no offspring in a generation replaced the parent.
     - ``frequencies``:  Dictionary used to return information about how often
       individuals of different lengths are evolved.
     '''
@@ -573,12 +579,6 @@ def generate(config, output, frequencies):
     if config['duplicate'] == 'single':
         # Override normal mutation with Single
         Individual.mutate = Individual.one_active_mutation
-    if config['active_push'] == 'more':
-        # Override normal fitness with bias toward more active nodes
-        Individual.get_fitness = Individual.more_active
-    elif config['active_push'] == 'less':
-        # Override normal fitness with bias toward less active nodes
-        Individual.get_fitness = Individual.less_active
     if config['problem'] == 'Flat':
         # Override normal method for determining active genes
         Individual.determine_active_nodes = Individual.all_active
@@ -596,6 +596,7 @@ def generate(config, output, frequencies):
         active = config['output_length'] + (len(parent.active) *
                                             (config['max_arity'] + 1))
         for index, mutant in enumerate(mutants):
+            # Estimates the probability none of the active genes were changed.
             output['estimated'] += (1 - config['mutation_rate']) ** active
             prev = mutant
             if config['duplicate'] not in ['normal', 'single']:
@@ -627,10 +628,12 @@ def generate(config, output, frequencies):
             active_changed = 0
             for newly_active in best_child.active:
                 if parent.never_active[newly_active]:
-                    # You can't get change information if its never existed.
+                    # You can't get change information if its never
+                    # been evaluated before.
                     continue
-                prev = parent.footprint[newly_active]
-                now = best_child.footprint[newly_active]
+                # Determine how the semantics have changed
+                prev = parent.semantics[newly_active]
+                now = best_child.semantics[newly_active]
                 change = bitcount(now ^ prev)
                 if newly_active in parent_active:
                     if change > 0:
@@ -653,7 +656,8 @@ def multi_indepenedent(config, output, frequencies):
     '''
     Allows for multiple parallel independent populations to be evolved
     at the same time.  Will generate one individual from each population
-    before repeating a population.
+    before repeating a population.  Not used in the paper ``Analysis of
+    Cartesian Genetic Programming's Evolutionary Mechanisms.``
 
     Parameters:
 
