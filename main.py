@@ -6,7 +6,7 @@ we suggest that PyPy 1.9.0 be used to run this code, although
 Python 2.7 should be able to handle it correctly.
 
 To see a full description of this modules command line arguments, run
-````pypy main.py -h````.
+``pypy main.py -h``.
 
 Provided with this code should be the ``cfg`` folder which contains some
 configuration files useful for running experiments.  These files can be passed

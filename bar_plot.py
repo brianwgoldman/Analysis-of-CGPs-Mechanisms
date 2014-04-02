@@ -3,7 +3,7 @@ Takes file names from the final/ folder and parses the information to
 create the bar charts in Table IV.  Use this module as an
 executable to process all result information for a single problem, such as:
 
-python bar_plot.py final/multiply_accumulate_normal_*.dat.gz
+``python bar_plot.py final/multiply_accumulate_normal_*.dat.gz``
 
 Do not mix problems in a single run.
 

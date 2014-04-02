@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Length Bias and Search Limitations in Cartesian Genetic Programming documentation build configuration file, created by
+# Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms documentation build configuration file, created by
 # sphinx-quickstart on Wed Jan 16 10:39:42 2013.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -40,8 +40,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Length Bias and Search Limitations in Cartesian Genetic Programming'
-copyright = u'2013, Brian W. Goldman'
+project = u"Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms"
+copyright = u'2014, Brian W. Goldman'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -164,7 +164,7 @@ html_static_path = ['sphinx_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'LengthBiasandSearchLimitationsinCartesianGeneticProgrammingdoc'
+htmlhelp_basename = 'AnalysisofCartesianGeneticProgrammingsEvolutionaryMechanismsdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -183,7 +183,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'LengthBiasandSearchLimitationsinCartesianGeneticProgramming.tex', u'Length Bias and Search Limitations in Cartesian Genetic Programming Documentation',
+  ('index', 'AnalysisofCartesianGeneticProgrammingsEvolutionaryMechanisms.tex',
+  u"Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms Documentation",
    u'Brian W. Goldman', 'manual'),
 ]
 
@@ -213,7 +214,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'lengthbiasandsearchlimitationsincartesiangeneticprogramming', u'Length Bias and Search Limitations in Cartesian Genetic Programming Documentation',
+    ('index', 'analysisofcartesiangeneticprogrammingsevolutionarymechanisms',
+    u"Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms Documentation",
      [u'Brian W. Goldman'], 1)
 ]
 
@@ -227,8 +229,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'LengthBiasandSearchLimitationsinCartesianGeneticProgramming', u'Length Bias and Search Limitations in Cartesian Genetic Programming Documentation',
-   u'Brian W. Goldman', 'LengthBiasandSearchLimitationsinCartesianGeneticProgramming', 'One line description of project.',
+  ('index', 'AnalysisofCartesianGeneticProgrammingsEvolutionaryMechanisms',
+  u"Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms Documentation",
+   u'Brian W. Goldman', 'AnalysisofCartesianGeneticProgrammingsEvolutionaryMechanisms', 'One line description of project.',
    'Miscellaneous'),
 ]
 

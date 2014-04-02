@@ -3,7 +3,7 @@ Takes file names from the final/ folder and parses the information to
 create the black and white graphs in Table III.  Use this module as an
 executable to process all result information for a single problem, such as:
 
-python never_actives.py final/multiply_accumulate_normal_*.dat.gz
+``python never_actives.py final/multiply_accumulate_normal_*.dat.gz``
 
 Do not mix problems in a single run.
 

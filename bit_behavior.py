@@ -3,7 +3,7 @@ Takes file names from the final/ folder as command line arguments
 and parses the semantic information to produce the contents of Table VI.
 Use this module as an executable to process each problem's results:
 
-python bit_behavior final/decode_*.dat.gz
+``python bit_behavior final/decode_*.dat.gz``
 
 Note: Do not mix results from different problems.
 '''

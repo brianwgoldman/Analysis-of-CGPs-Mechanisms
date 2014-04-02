@@ -3,7 +3,7 @@ Takes file names from the final/ folder and parses the information into
 readable values and produces statistical measures used in Table II.  Use this module as an
 executable to process all result information for a single problem, such as:
 
-python stats.py final/multiply*.dat.gz
+``python stats.py final/multiply*.dat.gz``
 
 Do not mix problems in a single run.
 
