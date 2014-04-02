@@ -1,0 +1,612 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>problems &mdash; Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for problems</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Defines each of the benchmark problems used as well as the function sets</span>
+<span class="sd">for those problems.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">or_</span><span class="p">,</span> <span class="n">and_</span><span class="p">,</span> <span class="n">add</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span> <span class="n">mul</span><span class="p">,</span> <span class="n">div</span><span class="p">,</span> <span class="n">xor</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+
+<div class="viewcode-block" id="nand"><a class="viewcode-back" href="../code.html#problems.nand">[docs]</a><span class="k">def</span> <span class="nf">nand</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Simple Nand function for inclusion in function sets.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="n">x</span> <span class="ow">and</span> <span class="n">y</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="nor"><a class="viewcode-back" href="../code.html#problems.nor">[docs]</a><span class="k">def</span> <span class="nf">nor</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Simple Nor function for inclusion in function sets.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="n">x</span> <span class="ow">or</span> <span class="n">y</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="and_neg_in"><a class="viewcode-back" href="../code.html#problems.and_neg_in">[docs]</a><span class="k">def</span> <span class="nf">and_neg_in</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="ow">not</span> <span class="n">x</span><span class="p">)</span> <span class="ow">and</span> <span class="n">y</span>
+
+</div>
+<div class="viewcode-block" id="protected"><a class="viewcode-back" href="../code.html#problems.protected">[docs]</a><span class="k">def</span> <span class="nf">protected</span><span class="p">(</span><span class="n">function</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Decorator that ensures decorated functions always have a valid output.</span>
+<span class="sd">    If an exception occurs or infinity is returned, the first argument of the</span>
+<span class="sd">    function will be returned.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``function``: The function to be decorated.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># Call the function on the arguments</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">,</span> <span class="ne">ZeroDivisionError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">inner</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">function</span><span class="o">.</span><span class="n">__name__</span>
+    <span class="k">return</span> <span class="n">inner</span>
+
+</div>
+<div class="viewcode-block" id="arity_controlled"><a class="viewcode-back" href="../code.html#problems.arity_controlled">[docs]</a><span class="k">def</span> <span class="nf">arity_controlled</span><span class="p">(</span><span class="n">desired</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Decorator used to make functions take any number of inputs while only</span>
+<span class="sd">    using the first ``desired`` number of arguments.  For example, you can</span>
+<span class="sd">    pass 10 arguments to a function that takes only 1 if ``desired=1`` and</span>
+<span class="sd">    the first of the arguments will actually be used.  Currently unused.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``desired``: The actual arity of the wrapped function.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="n">function</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">[:</span><span class="n">desired</span><span class="p">])</span>
+        <span class="n">inner</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">function</span><span class="o">.</span><span class="n">__name__</span>
+        <span class="k">return</span> <span class="n">inner</span>
+    <span class="k">return</span> <span class="n">wrap</span>
+
+<span class="c"># Standard lists of operators for different problems to use</span></div>
+<span class="n">binary_operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">or_</span><span class="p">,</span> <span class="n">and_</span><span class="p">,</span> <span class="n">nand</span><span class="p">,</span> <span class="n">nor</span><span class="p">]</span>
+<span class="n">regression_operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">add</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span>
+                        <span class="n">mul</span><span class="p">,</span> <span class="n">div</span><span class="p">]</span>
+
+<span class="c"># Ensures all regression operators are numerically protected</span>
+<span class="n">regression_operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">protected</span><span class="p">(</span><span class="n">op</span><span class="p">)</span> <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">regression_operators</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Problem"><a class="viewcode-back" href="../code.html#problems.Problem">[docs]</a><span class="k">class</span> <span class="nc">Problem</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    The abstract base of a problem</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Designed to force children of this class to implement this function.</span>
+<span class="sd">        Children use this function to set up problem specific initialization</span>
+<span class="sd">        from configuration information.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Problem.get_fitness"><a class="viewcode-back" href="../code.html#problems.Problem.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">individual</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Designed to force children of this class to implement this function.</span>
+<span class="sd">        Children use this function evaluate an individual and</span>
+<span class="sd">        return its fitness.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="Bounded_Problem"><a class="viewcode-back" href="../code.html#problems.Bounded_Problem">[docs]</a><span class="k">class</span> <span class="nc">Bounded_Problem</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Base object for any problem with a known set of test cases.  Stores a</span>
+<span class="sd">    map for all possible inputs to their correct outputs so they only</span>
+<span class="sd">    have to be evaluated once.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Create a new problem.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``config``: A dictionary containing the configuration information</span>
+<span class="sd">          required to fully initialize the problem.  Should include values</span>
+<span class="sd">          for:</span>
+
+<span class="sd">          - Any configuration information required to construct the problem</span>
+<span class="sd">            range.</span>
+<span class="sd">          - ``epsilon``: The amount of allowed error on each test.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training</span> <span class="o">=</span> <span class="p">[(</span><span class="n">inputs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem_function</span><span class="p">(</span><span class="n">inputs</span><span class="p">))</span>
+                         <span class="k">for</span> <span class="n">inputs</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_range</span><span class="p">(</span><span class="n">config</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;epsilon&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Bounded_Problem.get_fitness"><a class="viewcode-back" href="../code.html#problems.Bounded_Problem.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">individual</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return the fitness of an individual as applied to this problem.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``individual``: The individual to be evaluated.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="n">answers</span> <span class="o">=</span> <span class="n">individual</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+            <span class="c"># Finds the average number of outputs more than epsilon away from</span>
+            <span class="c"># the correct output</span>
+            <span class="n">score</span> <span class="o">+=</span> <span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">answer</span> <span class="o">-</span> <span class="n">output</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">answer</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">answers</span><span class="p">,</span> <span class="n">outputs</span><span class="p">))</span>
+                      <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">outputs</span><span class="p">))</span>
+        <span class="c"># Returns the percentage of correct answers</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">score</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">)))</span>
+</div>
+<div class="viewcode-block" id="Bounded_Problem.problem_function"><a class="viewcode-back" href="../code.html#problems.Bounded_Problem.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Designed to force children of this class to implement this function.</span>
+<span class="sd">        Children use this function to define how to translate an input value</span>
+<span class="sd">        into an output value for their problem.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="binary_range"><a class="viewcode-back" href="../code.html#problems.binary_range">[docs]</a><span class="k">def</span> <span class="nf">binary_range</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Given a dictionary specifying the ``input_length``, returns all binary</span>
+<span class="sd">    values of that length.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">repeat</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="single_bit_set"><a class="viewcode-back" href="../code.html#problems.single_bit_set">[docs]</a><span class="k">def</span> <span class="nf">single_bit_set</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Creates the list of all possible binary strings of specified length</span>
+<span class="sd">    with exactly one set bit.  ``config`` should specify the ``input_length``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="s">&#39;1&#39;</span><span class="o">.</span><span class="n">rjust</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">],</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+                      <span class="p">)</span>
+                  <span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">])]</span>
+
+</div>
+<div class="viewcode-block" id="float_samples"><a class="viewcode-back" href="../code.html#problems.float_samples">[docs]</a><span class="k">def</span> <span class="nf">float_samples</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns random samples of the input space.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``config``: A dictionary containing information about the input space.</span>
+<span class="sd">      - ``min``: The minimum valid value in the space.</span>
+<span class="sd">      - ``max``: The maximum valid value in the space.</span>
+<span class="sd">      - ``input_length``: The number of input variables.</span>
+<span class="sd">      - ``samples``: The number of samples to draw.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">([</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">],</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">])</span>
+             <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">])]</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;samples&#39;</span><span class="p">]))</span>
+
+</div>
+<div class="viewcode-block" id="float_range"><a class="viewcode-back" href="../code.html#problems.float_range">[docs]</a><span class="k">def</span> <span class="nf">float_range</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns a incremental range of a floating point value.  Like range() for</span>
+<span class="sd">    floats.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``config``: A dictionary containing information about the input space.</span>
+<span class="sd">      - ``min``: The minimum valid value in the space.</span>
+<span class="sd">      - ``max``: The maximum valid value in the space.</span>
+<span class="sd">      - ``step``: The distance between sample points.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">counter</span> <span class="o">*</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;step&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;min&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;max&#39;</span><span class="p">]:</span>
+            <span class="k">break</span>
+        <span class="k">yield</span> <span class="n">value</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+</div>
+<div class="viewcode-block" id="n_dimensional_grid"><a class="viewcode-back" href="../code.html#problems.n_dimensional_grid">[docs]</a><span class="k">def</span> <span class="nf">n_dimensional_grid</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns a multidimensional grid of points in the input space.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``config``: A dictionary containing information about the input space.</span>
+<span class="sd">      - All configuration information required by ``float_range``.</span>
+<span class="sd">      - ``input_length``: How many dimensions are in the input space.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">float_range</span><span class="p">(</span><span class="n">config</span><span class="p">),</span>
+                             <span class="n">repeat</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">])</span>
+
+</div>
+<div class="viewcode-block" id="Binary_Mixin"><a class="viewcode-back" href="../code.html#problems.Binary_Mixin">[docs]</a><span class="k">class</span> <span class="nc">Binary_Mixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Inheritance mixin useful for setting the class attributes of</span>
+<span class="sd">    binary problems.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">data_range</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">binary_range</span><span class="p">)</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="n">binary_operators</span>
+    <span class="n">max_arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+</div>
+<div class="viewcode-block" id="Regression_Mixin"><a class="viewcode-back" href="../code.html#problems.Regression_Mixin">[docs]</a><span class="k">class</span> <span class="nc">Regression_Mixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Inheritance mixin useful for setting the class attributes of</span>
+<span class="sd">    regression problems.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">data_range</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">float_range</span><span class="p">)</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="n">regression_operators</span>
+    <span class="n">max_arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+</div>
+<div class="viewcode-block" id="Neutral"><a class="viewcode-back" href="../code.html#problems.Neutral">[docs]</a><span class="k">class</span> <span class="nc">Neutral</span><span class="p">(</span><span class="n">Problem</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Neutral problem, in which all individuals receive the same</span>
+<span class="sd">    fitness.  The only operator in this function is &#39;None&#39;, meaning only</span>
+<span class="sd">    connection genes actually evolve.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span>
+    <span class="n">max_arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Doesn&#39;t require initialization, but must implement.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="Neutral.get_fitness"><a class="viewcode-back" href="../code.html#problems.Neutral.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the fitness of passed in individual, which is always 0.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+</div></div>
+<div class="viewcode-block" id="Even_Parity"><a class="viewcode-back" href="../code.html#problems.Even_Parity">[docs]</a><span class="k">class</span> <span class="nc">Even_Parity</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Even Parity problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Even_Parity.problem_function"><a class="viewcode-back" href="../code.html#problems.Even_Parity.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return the even parity of a list of boolean values.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="nb">sum</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">2</span><span class="p">]</span>
+
+</div></div>
+<div class="viewcode-block" id="Binary_Multiply"><a class="viewcode-back" href="../code.html#problems.Binary_Multiply">[docs]</a><span class="k">class</span> <span class="nc">Binary_Multiply</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Binary Multiplier problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Binary_Multiply.problem_function"><a class="viewcode-back" href="../code.html#problems.Binary_Multiply.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return the result of performing a binary multiplication of the first</span>
+<span class="sd">        half of the inputs with the second half.  Will always have the same</span>
+<span class="sd">        number of output bits as input bits.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c"># convert the two binary numbers to integers</span>
+        <span class="n">joined</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">inputs</span><span class="p">))</span>
+        <span class="n">middle</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">joined</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">joined</span><span class="p">[:</span><span class="n">middle</span><span class="p">],</span> <span class="n">joined</span><span class="p">[</span><span class="n">middle</span><span class="p">:]</span>
+        <span class="c"># multiply the two numbers and convert back to binary</span>
+        <span class="n">multiplied</span> <span class="o">=</span> <span class="nb">bin</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">2</span><span class="p">))[</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="c"># pad the result to have enough bits</span>
+        <span class="n">extended</span> <span class="o">=</span> <span class="n">multiplied</span><span class="o">.</span><span class="n">rjust</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">),</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">extended</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="Binary_Multiply_Miller"><a class="viewcode-back" href="../code.html#problems.Binary_Multiply_Miller">[docs]</a><span class="k">class</span> <span class="nc">Binary_Multiply_Miller</span><span class="p">(</span><span class="n">Binary_Multiply</span><span class="p">):</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">and_</span><span class="p">,</span> <span class="n">and_neg_in</span><span class="p">,</span> <span class="n">xor</span><span class="p">,</span> <span class="n">or_</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="Binary_Multiply_Torresen"><a class="viewcode-back" href="../code.html#problems.Binary_Multiply_Torresen">[docs]</a><span class="k">class</span> <span class="nc">Binary_Multiply_Torresen</span><span class="p">(</span><span class="n">Binary_Multiply</span><span class="p">):</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">and_</span><span class="p">,</span> <span class="n">xor</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="Multiplexer"><a class="viewcode-back" href="../code.html#problems.Multiplexer">[docs]</a><span class="k">class</span> <span class="nc">Multiplexer</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Multiplexer (MUX) Problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Multiplexer.problem_function"><a class="viewcode-back" href="../code.html#problems.Multiplexer.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Uses the first k bits as a selector for which of the remaining bits to</span>
+<span class="sd">        return.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">),</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">inputs</span><span class="p">[:</span><span class="n">k</span><span class="p">])),</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">inputs</span><span class="p">[</span><span class="n">index</span><span class="p">]]</span>
+
+</div></div>
+<div class="viewcode-block" id="Demultiplexer"><a class="viewcode-back" href="../code.html#problems.Demultiplexer">[docs]</a><span class="k">class</span> <span class="nc">Demultiplexer</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Demultiplexer (DEMUX) Problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Demultiplexer.problem_function"><a class="viewcode-back" href="../code.html#problems.Demultiplexer.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the last input bit on the output line specified by the binary</span>
+<span class="sd">        index encoded on all inputs except the last bit.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">inputs</span><span class="p">[:</span><span class="n">k</span><span class="p">])),</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">k</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">inputs</span><span class="p">[</span><span class="n">index</span><span class="p">]]</span>
+
+</div></div>
+<div class="viewcode-block" id="Binary_Encode"><a class="viewcode-back" href="../code.html#problems.Binary_Encode">[docs]</a><span class="k">class</span> <span class="nc">Binary_Encode</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Binary Encode problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Set the data range to be all possible inputs with a single set bit.</span>
+    <span class="n">data_range</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">single_bit_set</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Binary_Encode.problem_function"><a class="viewcode-back" href="../code.html#problems.Binary_Encode.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the binary encoding of which input line contains a one.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">oneat</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">binary</span> <span class="o">=</span> <span class="nb">bin</span><span class="p">(</span><span class="n">oneat</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">binary</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">width</span><span class="p">)))</span>
+
+</div></div>
+<div class="viewcode-block" id="Binary_Decode"><a class="viewcode-back" href="../code.html#problems.Binary_Decode">[docs]</a><span class="k">class</span> <span class="nc">Binary_Decode</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Binary Decode problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Binary_Decode.problem_function"><a class="viewcode-back" href="../code.html#problems.Binary_Decode.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a 1 on the output line specified by the binary input index</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">combined</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">inputs</span><span class="p">))</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">width</span>
+        <span class="n">base</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">base</span>
+
+</div></div>
+<div class="viewcode-block" id="Breadth"><a class="viewcode-back" href="../code.html#problems.Breadth">[docs]</a><span class="k">class</span> <span class="nc">Breadth</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Breadth problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Set the data range to be all possible inputs with a single set bit.</span>
+    <span class="n">data_range</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">single_bit_set</span><span class="p">)</span>
+    <span class="c"># Set the list of possible operators to just be OR.</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">or_</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Breadth.problem_function"><a class="viewcode-back" href="../code.html#problems.Breadth.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns true as long as at least one input is true.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+
+</div></div>
+<div class="viewcode-block" id="TwoFloor"><a class="viewcode-back" href="../code.html#problems.TwoFloor">[docs]</a><span class="k">class</span> <span class="nc">TwoFloor</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Two Floor Problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Set the data range to be all possible inputs with a single set bit.</span>
+    <span class="n">data_range</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">single_bit_set</span><span class="p">)</span>
+    <span class="c"># Set the list of possible operators to just be OR.</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="n">or_</span><span class="p">]</span>
+
+<div class="viewcode-block" id="TwoFloor.problem_function"><a class="viewcode-back" href="../code.html#problems.TwoFloor.problem_function">[docs]</a>    <span class="k">def</span> <span class="nf">problem_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a string of bits half as long as the input string, where</span>
+<span class="sd">        the only set output bit is at the index // 2 of the set input bit.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">inputs</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">results</span>
+
+</div></div>
+<div class="viewcode-block" id="Depth"><a class="viewcode-back" href="../code.html#problems.Depth">[docs]</a><span class="k">class</span> <span class="nc">Depth</span><span class="p">(</span><span class="n">Problem</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Depth problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Set the list of possible operators to just be just min(X, Y) + 1.</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="k">lambda</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">max_arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Saves configuration for use during evaluation.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+
+<div class="viewcode-block" id="Depth.get_fitness"><a class="viewcode-back" href="../code.html#problems.Depth.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">individual</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the fitness of the individual as a percentage of maximum</span>
+<span class="sd">        fitness.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="n">individual</span><span class="o">.</span><span class="n">evaluate</span><span class="p">((</span><span class="mi">0</span><span class="p">,))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">score</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;graph_length&#39;</span><span class="p">])</span>
+
+</div></div>
+<div class="viewcode-block" id="Flat"><a class="viewcode-back" href="../code.html#problems.Flat">[docs]</a><span class="k">class</span> <span class="nc">Flat</span><span class="p">(</span><span class="n">Problem</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Flat problem, in which all individuals receive fitness</span>
+<span class="sd">    based on how many connection genes are connected to the input.</span>
+<span class="sd">    The only operator in this function is &#39;None&#39;, meaning only</span>
+<span class="sd">    connection genes actually evolve.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span>
+    <span class="n">max_arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Doesn&#39;t require initialization, but must implement.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="Flat.get_fitness"><a class="viewcode-back" href="../code.html#problems.Flat.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">individual</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the percentage of connection genes connected to the input.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">correct</span><span class="p">,</span> <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">individual</span><span class="o">.</span><span class="n">genes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">gene</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">gene</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">correct</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">total</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">correct</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">total</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="Novel"><a class="viewcode-back" href="../code.html#problems.Novel">[docs]</a><span class="k">class</span> <span class="nc">Novel</span><span class="p">(</span><span class="n">Problem</span><span class="p">,</span> <span class="n">Binary_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Novel problem, which evaluates individuals based on how many</span>
+<span class="sd">    unique semantics the individual can create.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="n">complete</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">best</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">complete</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;graph_length&#39;</span><span class="p">]))</span>
+
+<div class="viewcode-block" id="Novel.get_fitness"><a class="viewcode-back" href="../code.html#problems.Novel.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">individual</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">inputs</span> <span class="ow">in</span> <span class="n">binary_range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">):</span>
+            <span class="n">individual</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">individual</span><span class="o">.</span><span class="n">semantics</span><span class="p">))</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">best</span>
+
+</div></div>
+<div class="viewcode-block" id="Active"><a class="viewcode-back" href="../code.html#problems.Active">[docs]</a><span class="k">class</span> <span class="nc">Active</span><span class="p">(</span><span class="n">Problem</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Active problem, in which all individuals receive fitness</span>
+<span class="sd">    based on how many active nodes they have.</span>
+<span class="sd">    The only operator in this function is &#39;None&#39;, meaning only</span>
+<span class="sd">    connection genes actually evolve.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">operators</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span>
+    <span class="n">max_arity</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Saves configuration for use during evaluation.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+
+<div class="viewcode-block" id="Active.get_fitness"><a class="viewcode-back" href="../code.html#problems.Active.get_fitness">[docs]</a>    <span class="k">def</span> <span class="nf">get_fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">individual</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the percentage of nodes that are active.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">individual</span><span class="o">.</span><span class="n">active</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;graph_length&#39;</span><span class="p">])</span>
+
+</div></div>
+<div class="viewcode-block" id="Koza_1"><a class="viewcode-back" href="../code.html#problems.Koza_1">[docs]</a><span class="k">class</span> <span class="nc">Koza_1</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Regression_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Koza-1 problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Koza_1.koza_quartic"><a class="viewcode-back" href="../code.html#problems.Koza_1.koza_quartic">[docs]</a>    <span class="k">def</span> <span class="nf">koza_quartic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return the result of Koza-1 on the specified input.  Expects the input</span>
+<span class="sd">        as a single element list and returns a single element list.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span> <span class="o">**</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">x</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">+</span> <span class="n">x</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">x</span><span class="p">]</span>
+
+</div></div>
+<div class="viewcode-block" id="Pagie_1"><a class="viewcode-back" href="../code.html#problems.Pagie_1">[docs]</a><span class="k">class</span> <span class="nc">Pagie_1</span><span class="p">(</span><span class="n">Bounded_Problem</span><span class="p">,</span> <span class="n">Regression_Mixin</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Defines the Pagie-1 problem.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Set the data range to be an n dimensional grid.</span>
+    <span class="n">data_range</span> <span class="o">=</span> <span class="nb">staticmethod</span><span class="p">(</span><span class="n">n_dimensional_grid</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Pagie_1.pagie"><a class="viewcode-back" href="../code.html#problems.Pagie_1.pagie">[docs]</a>    <span class="k">def</span> <span class="nf">pagie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the result of Pagie-1 on the specified inputs.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">inputs</span>
+        <span class="k">return</span> <span class="p">[</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">x</span> <span class="o">**</span> <span class="o">-</span><span class="mi">4</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">y</span> <span class="o">**</span> <span class="o">-</span><span class="mi">4</span><span class="p">)]</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Brian W. Goldman.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

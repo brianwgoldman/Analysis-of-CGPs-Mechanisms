@@ -1,0 +1,775 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>evolution &mdash; Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for evolution</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Handles how to perform all of the actual evolution.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">from</span> <span class="nn">util</span> <span class="kn">import</span> <span class="n">diff_count</span><span class="p">,</span> <span class="n">bitcount</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">problems</span>
+
+
+<div class="viewcode-block" id="Individual"><a class="viewcode-back" href="../code.html#evolution.Individual">[docs]</a><span class="k">class</span> <span class="nc">Individual</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    An individual object used to combine gene fitness with genomes, as</span>
+<span class="sd">    well methods for manipulating those genomes.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph_length</span><span class="p">,</span> <span class="n">input_length</span><span class="p">,</span> <span class="n">output_length</span><span class="p">,</span>
+                  <span class="n">max_arity</span><span class="p">,</span> <span class="n">function_list</span><span class="p">,</span> <span class="o">**</span><span class="n">_</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Create a new individual instance.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``graph_length``: The number of nodes in the CGP encoded graph.</span>
+<span class="sd">        - ``input_length``: The number of input variables.</span>
+<span class="sd">        - ``output_length``: The number of output variables.</span>
+<span class="sd">        - ``max_arity``: The maximum arity used by any function.</span>
+<span class="sd">        - ``function_list``: The list of functions a node can use.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span> <span class="o">=</span> <span class="n">max_arity</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span> <span class="o">=</span> <span class="n">input_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span> <span class="o">=</span> <span class="n">graph_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">function_list</span> <span class="o">=</span> <span class="n">function_list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_length</span> <span class="o">=</span> <span class="n">output_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">genes</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">genes</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">random_gene</span><span class="p">(</span><span class="n">index</span><span class="p">)</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span>
+                      <span class="nb">range</span><span class="p">(</span><span class="n">graph_length</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span> <span class="o">+</span> <span class="n">output_length</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">determine_active_nodes</span><span class="p">()</span>
+        <span class="c"># Block of memory used when evaluating an individual</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">graph_length</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">)</span>
+        <span class="c"># Records the output for each node.  NOTE: semantics are only</span>
+        <span class="c"># updated when a node is active</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">graph_length</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">)</span>
+        <span class="c"># Records with indices have ever been active</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">never_active</span> <span class="o">=</span> <span class="p">[</span><span class="bp">True</span><span class="p">]</span> <span class="o">*</span> <span class="n">graph_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_counter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_order</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitness</span> <span class="o">=</span> <span class="o">-</span><span class="n">sys</span><span class="o">.</span><span class="n">maxint</span>
+
+<div class="viewcode-block" id="Individual.random_gene"><a class="viewcode-back" href="../code.html#evolution.Individual.random_gene">[docs]</a>    <span class="k">def</span> <span class="nf">random_gene</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Determines a random gene value given a gene index.  If optional</span>
+<span class="sd">        ``invalid`` option is used, the returned value will only be ``invalid``</span>
+<span class="sd">        if the gene has no other valid values.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``index``: The gene index who&#39;s value is being set.</span>
+<span class="sd">        - ``invalid``: Value to avoid returning if possible</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">node_number</span> <span class="o">=</span> <span class="n">index</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+        <span class="n">gene_number</span> <span class="o">=</span> <span class="n">index</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+        <span class="c"># If the gene is used to specify output locations</span>
+        <span class="k">if</span> <span class="n">node_number</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">:</span>
+            <span class="n">node_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span>
+            <span class="n">gene_number</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="c"># If the gene controls the function of a node</span>
+        <span class="k">if</span> <span class="n">gene_number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">function_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">function_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="n">choice</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">function_list</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">choice</span> <span class="o">!=</span> <span class="n">invalid</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">choice</span>
+        <span class="c"># If the gene controls a connection / output location</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">node_number</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="n">choice</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="n">node_number</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">choice</span> <span class="o">!=</span> <span class="n">invalid</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">choice</span>
+</div>
+<div class="viewcode-block" id="Individual.dag_random_gene"><a class="viewcode-back" href="../code.html#evolution.Individual.dag_random_gene">[docs]</a>    <span class="k">def</span> <span class="nf">dag_random_gene</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Determines a random gene value given a gene index of a full DAG.</span>
+<span class="sd">        If optional ``invalid`` option is used, the returned value</span>
+<span class="sd">        will only be ``invalid`` if the gene has no other valid values.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``index``: The gene index who&#39;s value is being set.</span>
+<span class="sd">        - ``invalid``: Value to avoid returning if possible</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">node_number</span> <span class="o">=</span> <span class="n">index</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+        <span class="n">gene_number</span> <span class="o">=</span> <span class="n">index</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+        <span class="k">if</span> <span class="n">node_number</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">:</span>
+            <span class="n">node_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span>
+            <span class="n">gene_number</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c"># If it is a function gene</span>
+        <span class="k">if</span> <span class="n">gene_number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">function_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">function_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="n">choice</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">function_list</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">choice</span> <span class="o">!=</span> <span class="n">invalid</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">choice</span>
+        <span class="c"># If you are dealing with output locations or individual initialization</span>
+        <span class="k">elif</span> <span class="n">gene_number</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">node_number</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="n">choice</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="n">node_number</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">choice</span> <span class="o">!=</span> <span class="n">invalid</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">choice</span>
+        <span class="c"># If you are resetting a connection link on an existing individual</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid_reconnect</span><span class="p">(</span><span class="n">node_number</span><span class="p">,</span> <span class="n">invalid</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Individual.valid_reconnect"><a class="viewcode-back" href="../code.html#evolution.Individual.valid_reconnect">[docs]</a>    <span class="k">def</span> <span class="nf">valid_reconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_index</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        When using a DAG individual, find a random connection location that</span>
+<span class="sd">        does not depend on the current node.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``node_index``: The index of the node who&#39;s connection is being reset</span>
+<span class="sd">        - ``invalid``: Value to avoid returning if possible</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c"># Nodes always depend on themselves and inputs never depend on nodes</span>
+        <span class="n">dependent</span> <span class="o">=</span> <span class="p">{</span><span class="n">node_index</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span> <span class="n">invalid</span><span class="p">:</span> <span class="bp">False</span><span class="p">}</span>
+        <span class="c"># Current inputs are not dependent on the mutating node</span>
+        <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">):</span>
+            <span class="n">dependent</span><span class="p">[</span><span class="n">conn</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">dependent</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">def</span> <span class="nf">is_dependent</span><span class="p">(</span><span class="n">current</span><span class="p">):</span>
+            <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">            Internal recursive function to determine if a node index</span>
+<span class="sd">            is dependent on ``node_index``.  Also updates the dependency</span>
+<span class="sd">            dictionary.</span>
+
+<span class="sd">            Parameters:</span>
+
+<span class="sd">            - ``current``: The current working node index to be checked for</span>
+<span class="sd">              dependency.</span>
+<span class="sd">            &#39;&#39;&#39;</span>
+            <span class="k">if</span> <span class="n">current</span> <span class="ow">in</span> <span class="n">dependent</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">dependent</span><span class="p">[</span><span class="n">current</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">current</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">is_dependent</span><span class="p">(</span><span class="n">conn</span><span class="p">):</span>
+                    <span class="n">dependent</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="k">return</span> <span class="bp">True</span>
+            <span class="n">dependent</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        <span class="c"># Create the list of all possible connections</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="p">)):</span>
+            <span class="c"># Choose a random untried option and swap it to the next index</span>
+            <span class="n">swapdown</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="p">))</span>
+            <span class="n">options</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">options</span><span class="p">[</span><span class="n">swapdown</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">options</span><span class="p">[</span><span class="n">swapdown</span><span class="p">],</span>
+                                                 <span class="n">options</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            <span class="n">option</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="c"># Test this option</span>
+            <span class="k">if</span> <span class="n">option</span> <span class="o">!=</span> <span class="n">invalid</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_dependent</span><span class="p">(</span><span class="n">option</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">option</span>
+        <span class="k">return</span> <span class="n">invalid</span>
+</div>
+<div class="viewcode-block" id="Individual.new"><a class="viewcode-back" href="../code.html#evolution.Individual.new">[docs]</a>    <span class="k">def</span> <span class="nf">new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">modification_method</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return a copy of the individual.  Note that individuals are shallow</span>
+<span class="sd">        copied except for their list of genes.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c"># WARNING individuals are shallow copied except for things added here</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">semantics</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">never_active</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">never_active</span><span class="p">)</span>
+        <span class="n">modification_method</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">new</span><span class="o">.</span><span class="n">determine_active_nodes</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">new</span>
+</div>
+<div class="viewcode-block" id="Individual.connections"><a class="viewcode-back" href="../code.html#evolution.Individual.connections">[docs]</a>    <span class="k">def</span> <span class="nf">connections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_index</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Return the list of connections that a specified node has.</span>
+
+<span class="sd">        Parameters</span>
+
+<span class="sd">        - ``node_index``: The index of the node information is being requested</span>
+<span class="sd">          for.  Note this is different from gene index.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">node_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span> <span class="o">*</span> <span class="n">node_index</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">node_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span> <span class="n">node_start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Individual.determine_active_nodes"><a class="viewcode-back" href="../code.html#evolution.Individual.determine_active_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">determine_active_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Determines which nodes are currently active and sets self.active</span>
+<span class="sd">        to the sorted list of active genes.  Automatically called by gene</span>
+<span class="sd">        manipulating member functions.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">:])</span>
+
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+                <span class="c"># add all of the connection genes for this node</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span><span class="n">acting</span> <span class="k">for</span> <span class="n">acting</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="k">if</span> <span class="n">acting</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="Individual.dag_determine_active_nodes"><a class="viewcode-back" href="../code.html#evolution.Individual.dag_determine_active_nodes">[docs]</a>    <span class="k">def</span> <span class="nf">dag_determine_active_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Determines which nodes are currently active and sets self.active</span>
+<span class="sd">        to the sorted list of active genes in DAG individuals.</span>
+<span class="sd">        Automatically called by gene manipulating member functions.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">depends_on</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="n">feeds_to</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="c"># The output locations start as &#39;connected&#39;</span>
+        <span class="n">connected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">:]</span>
+        <span class="n">added</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">connected</span><span class="p">)</span>
+        <span class="c"># Build a bi-directional dependency tree</span>
+        <span class="k">while</span> <span class="n">connected</span><span class="p">:</span>
+            <span class="n">working</span> <span class="o">=</span> <span class="n">connected</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="c"># Ignore input locations</span>
+            <span class="k">if</span> <span class="n">working</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">working</span><span class="p">):</span>
+                <span class="c"># Record that &#39;working&#39; takes input from &#39;conn&#39;</span>
+                <span class="n">depends_on</span><span class="p">[</span><span class="n">working</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+                <span class="c"># Record that &#39;conn&#39; sends its output to &#39;working&#39;</span>
+                <span class="n">feeds_to</span><span class="p">[</span><span class="n">conn</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">working</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">conn</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">added</span><span class="p">:</span>
+                    <span class="n">connected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+                <span class="n">added</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+        <span class="c"># find the order in which to evaluate them</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c"># All input locations start out addable</span>
+        <span class="n">addable</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">)]</span>
+
+        <span class="k">while</span> <span class="n">addable</span><span class="p">:</span>
+            <span class="n">working</span> <span class="o">=</span> <span class="n">addable</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="c"># Find everything that depends on &#39;working&#39; for input</span>
+            <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="n">feeds_to</span><span class="p">[</span><span class="n">working</span><span class="p">]:</span>
+                <span class="c"># Record that &#39;conn&#39; is no longer waiting on &#39;working&#39;</span>
+                <span class="n">depends_on</span><span class="p">[</span><span class="n">conn</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">working</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">depends_on</span><span class="p">[</span><span class="n">conn</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">addable</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Individual.all_active"><a class="viewcode-back" href="../code.html#evolution.Individual.all_active">[docs]</a>    <span class="k">def</span> <span class="nf">all_active</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Function that always makes all nodes in the genome active.  Useful</span>
+<span class="sd">        when the fitness function analyzes nodes directly when combined with</span>
+<span class="sd">        Single mutation.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Individual.evaluate"><a class="viewcode-back" href="../code.html#evolution.Individual.evaluate">[docs]</a>    <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Given a list of inputs, return a list of outputs from executing</span>
+<span class="sd">        this individual.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``inputs``: The list of input values for the individual to process.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c"># Start by loading the input values into scratch</span>
+        <span class="c"># NOTE: Input locations are given as negative values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="p">[</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">):]</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">input_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_order</span><span class="p">[</span><span class="n">inputs</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">input_number</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_counter</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_order</span><span class="p">[</span><span class="n">inputs</span><span class="p">]</span> <span class="o">=</span> <span class="n">input_number</span>
+            <span class="c"># Bit mask used to turn on specific bits in the semantics</span>
+            <span class="n">on</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">input_number</span>
+            <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">),</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="p">[</span><span class="n">index</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">|=</span> <span class="n">on</span>
+        <span class="n">on</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">input_number</span>
+        <span class="c"># Loop through the active genes in order</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+            <span class="n">function</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">node_index</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span><span class="p">]</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="p">[</span><span class="n">con</span><span class="p">]</span> <span class="k">for</span> <span class="n">con</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">)]</span>
+            <span class="c"># Apply the function to the inputs from scratch, saving results</span>
+            <span class="c"># back to the scratch</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="c"># Records what the output was for this node on this input</span>
+            <span class="k">if</span> <span class="n">result</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span> <span class="o">|=</span> <span class="n">on</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span> <span class="o">&amp;=</span> <span class="o">~</span><span class="n">on</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">never_active</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="c"># Extract outputs from the scratch space</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">scratch</span><span class="p">[</span><span class="n">output</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">:]]</span>
+</div>
+<div class="viewcode-block" id="Individual.mutate"><a class="viewcode-back" href="../code.html#evolution.Individual.mutate">[docs]</a>    <span class="k">def</span> <span class="nf">mutate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mutation_rate</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Mutates the calling individual&#39;s genes using the give mutation rate.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``mutation_rate``: The probability that a specific gene will mutate.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">mutation_rate</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_gene</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="Individual.one_active_mutation"><a class="viewcode-back" href="../code.html#evolution.Individual.one_active_mutation">[docs]</a>    <span class="k">def</span> <span class="nf">one_active_mutation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Mutates the calling individual using the ``Single`` mutation method.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="c"># Choose an index at random</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">))</span>
+            <span class="c"># Get a new value for that gene</span>
+            <span class="n">newval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_gene</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            <span class="c"># If that value is different than the current value</span>
+            <span class="k">if</span> <span class="n">newval</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">newval</span>
+                <span class="c"># Determine if that gene was part of an active node</span>
+                <span class="n">node_number</span> <span class="o">=</span> <span class="n">index</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">node_number</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span> <span class="ow">or</span>
+                    <span class="n">node_number</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">):</span>
+                    <span class="k">break</span>
+</div>
+<div class="viewcode-block" id="Individual.reorder"><a class="viewcode-back" href="../code.html#evolution.Individual.reorder">[docs]</a>    <span class="k">def</span> <span class="nf">reorder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Reorder individual&#39;s genes randomly without</span>
+<span class="sd">        changing any of the actual connection information.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c"># Build a list of dependencies</span>
+        <span class="n">depends_on</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="n">feeds_to</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">):</span>
+                <span class="c"># Record that &#39;node_index&#39; takes input from &#39;conn&#39;</span>
+                <span class="n">depends_on</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+                <span class="c"># Record that &#39;conn&#39; sends its output to &#39;node_index&#39;</span>
+                <span class="n">feeds_to</span><span class="p">[</span><span class="n">conn</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">node_index</span><span class="p">)</span>
+        <span class="c"># Create a dictionary storing how to translate location information</span>
+        <span class="n">new_order</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">)}</span>
+        <span class="c"># Input locations start as addable</span>
+        <span class="n">addable</span> <span class="o">=</span> <span class="n">new_order</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">while</span> <span class="n">addable</span><span class="p">:</span>
+            <span class="c"># Choose a node at random who&#39;s dependencies have already been met</span>
+            <span class="n">working</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">addable</span><span class="p">)</span>
+            <span class="n">addable</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">working</span><span class="p">)</span>
+            <span class="c"># If &#39;working&#39; is not an input location</span>
+            <span class="k">if</span> <span class="n">working</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c"># Assign this node to the next available index</span>
+                <span class="n">new_order</span><span class="p">[</span><span class="n">working</span><span class="p">]</span> <span class="o">=</span> <span class="n">counter</span>
+                <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c"># Update all dependencies now that this node has been added</span>
+            <span class="k">for</span> <span class="n">to_add</span> <span class="ow">in</span> <span class="n">feeds_to</span><span class="p">[</span><span class="n">working</span><span class="p">]:</span>
+                <span class="c"># Mark &#39;to_add&#39; as having its requirement on &#39;working&#39; complete</span>
+                <span class="n">depends_on</span><span class="p">[</span><span class="n">to_add</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">working</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">depends_on</span><span class="p">[</span><span class="n">to_add</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">addable</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_add</span><span class="p">)</span>
+
+        <span class="c"># Create the new individual using the new ordering</span>
+        <span class="n">old_genes</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">)</span>
+        <span class="n">old_semantics</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">)</span>
+        <span class="n">old_n_a</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">never_active</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">):</span>
+            <span class="c"># Find the new starting location in the self for this node</span>
+            <span class="n">new_start</span> <span class="o">=</span> <span class="n">new_order</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+            <span class="n">old_start</span> <span class="o">=</span> <span class="n">node_index</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+            <span class="n">new_end</span> <span class="o">=</span> <span class="n">new_start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+            <span class="n">old_end</span> <span class="o">=</span> <span class="n">old_start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+            <span class="c"># Move over the function gene</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">new_start</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_genes</span><span class="p">[</span><span class="n">old_start</span><span class="p">]</span>
+            <span class="c"># Translate connection genes to have new order information</span>
+            <span class="n">connections</span> <span class="o">=</span> <span class="p">[</span><span class="n">new_order</span><span class="p">[</span><span class="n">conn</span><span class="p">]</span>
+                           <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="n">old_genes</span><span class="p">[</span><span class="n">old_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">old_end</span><span class="p">]]</span>
+            <span class="c"># Move over the connection genes</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">new_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span><span class="n">new_end</span><span class="p">]</span> <span class="o">=</span> <span class="n">connections</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">new_order</span><span class="p">[</span><span class="n">node_index</span><span class="p">]]</span> <span class="o">=</span> <span class="n">old_semantics</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">never_active</span><span class="p">[</span><span class="n">new_order</span><span class="p">[</span><span class="n">node_index</span><span class="p">]]</span> <span class="o">=</span> <span class="n">old_n_a</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">)</span>
+        <span class="c"># Update the output locations</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">,</span> <span class="n">length</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_order</span><span class="p">[</span><span class="n">old_genes</span><span class="p">[</span><span class="n">index</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">determine_active_nodes</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Individual.simplify"><a class="viewcode-back" href="../code.html#evolution.Individual.simplify">[docs]</a>    <span class="k">def</span> <span class="nf">simplify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Using the semantic information recorded for each node, this</span>
+<span class="sd">        will modify the individual to ensure only 1 node produces each</span>
+<span class="sd">        unique semantic.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">lookup</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c"># Keeps track of 1 index for each unique semantic, favoring</span>
+        <span class="c"># nodes near the start of the active list</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">):</span>
+            <span class="n">lookup</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">node_index</span><span class="p">]]</span> <span class="o">=</span> <span class="n">node_index</span>
+        <span class="c"># All input locations take priority for producing their semantics.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">lookup</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="c"># Replace all connections to use saved index to produce the required semantic.</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">semantic</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]]</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">lookup</span><span class="p">[</span><span class="n">semantic</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">determine_active_nodes</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Individual.asym_phenotypic_difference"><a class="viewcode-back" href="../code.html#evolution.Individual.asym_phenotypic_difference">[docs]</a>    <span class="k">def</span> <span class="nf">asym_phenotypic_difference</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Determine how many genes would have to be mutated in order to make</span>
+<span class="sd">        the ``other`` individual phenotypically identical to ``self``.</span>
+
+<span class="sd">        Parameters:</span>
+
+<span class="sd">        - ``other``: The individual to compare with.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c"># Count the differences in the output locations</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">diff_count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">:],</span>
+                           <span class="n">other</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">:])</span>
+        <span class="c"># For each active node</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">node_index</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span>
+            <span class="c"># Count the number of different connection genes</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="n">diff_count</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">),</span>
+                                <span class="n">other</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">))</span>
+            <span class="c"># Include differences in the function gene</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">!=</span>
+                      <span class="n">other</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">count</span>
+</div>
+<div class="viewcode-block" id="Individual.show_active"><a class="viewcode-back" href="../code.html#evolution.Individual.show_active">[docs]</a>    <span class="k">def</span> <span class="nf">show_active</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Prints the active portions of the individual in a somewhat readable</span>
+<span class="sd">        way.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+            <span class="n">node_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span> <span class="o">*</span> <span class="n">node_index</span>
+            <span class="k">print</span> <span class="n">node_index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="n">node_start</span><span class="p">],</span>
+            <span class="k">print</span> <span class="bp">self</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">node_index</span><span class="p">]</span>
+        <span class="k">print</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">[</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">:]</span>
+</div>
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the result of self.fitness &lt; other.fitness.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitness</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">fitness</span>
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns the result of self.fitness &lt;= other.fitness.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitness</span> <span class="o">&lt;=</span> <span class="n">other</span><span class="o">.</span><span class="n">fitness</span>
+
+<div class="viewcode-block" id="Individual.dump_genes"><a class="viewcode-back" href="../code.html#evolution.Individual.dump_genes">[docs]</a>    <span class="k">def</span> <span class="nf">dump_genes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a file read/writable representation of the individuals genes.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">g</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="n">g</span><span class="o">.</span><span class="n">__name__</span>
+                <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Individual.dump"><a class="viewcode-back" href="../code.html#evolution.Individual.dump">[docs]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a json ready dictionary representation of the entire individual</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">genes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dump_genes</span><span class="p">()</span>
+        <span class="n">never_active</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">never_active</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;genes&#39;</span><span class="p">:</span> <span class="n">genes</span><span class="p">,</span>
+                <span class="s">&#39;fitness&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitness</span><span class="p">,</span>
+                <span class="s">&#39;never_active&#39;</span><span class="p">:</span> <span class="n">never_active</span><span class="p">,</span>
+                <span class="s">&#39;graph_length&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph_length</span><span class="p">,</span>
+                <span class="s">&#39;max_arity&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_step</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s">&#39;output_length&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_length</span><span class="p">,</span>
+                <span class="s">&#39;input_length&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_length</span><span class="p">}</span>
+</div>
+<div class="viewcode-block" id="Individual.load"><a class="viewcode-back" href="../code.html#evolution.Individual.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Recovers a &quot;dump&quot;ed individual from the dictionary,</span>
+<span class="sd">        overwriting the calling individual.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">never_active</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">==</span> <span class="s">&#39;1&#39;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s">&#39;never_active&#39;</span><span class="p">]]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">genes</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="n">problems</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">g</span><span class="p">]</span>
+                      <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">genes</span><span class="p">]</span>
+</div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Individual.reconstruct_individual"><a class="viewcode-back" href="../code.html#evolution.Individual.reconstruct_individual">[docs]</a>    <span class="k">def</span> <span class="nf">reconstruct_individual</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">test_inputs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Recovers an individual&#39;s connections and never active node listing.</span>
+<span class="sd">        Used when post processing individuals from previous runs.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">copy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">copy</span><span class="p">[</span><span class="s">&#39;function_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span>
+        <span class="n">individual</span> <span class="o">=</span> <span class="n">Individual</span><span class="p">(</span><span class="o">**</span><span class="n">copy</span><span class="p">)</span>
+        <span class="n">individual</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="c"># Ensure it is serial</span>
+        <span class="k">for</span> <span class="n">node_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">individual</span><span class="o">.</span><span class="n">graph_length</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">conn</span> <span class="ow">in</span> <span class="n">individual</span><span class="o">.</span><span class="n">connections</span><span class="p">(</span><span class="n">node_index</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">conn</span> <span class="o">&gt;</span> <span class="n">node_index</span><span class="p">:</span>
+                    <span class="n">individual</span><span class="o">.</span><span class="n">reorder</span><span class="p">()</span>
+                    <span class="k">break</span>
+        <span class="c"># Store a copy of the never active genes after reorder</span>
+        <span class="n">never_active</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">individual</span><span class="o">.</span><span class="n">never_active</span><span class="p">)</span>
+        <span class="c"># Set semantics values</span>
+        <span class="n">individual</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">individual</span><span class="o">.</span><span class="n">graph_length</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">inputs</span> <span class="ow">in</span> <span class="n">test_inputs</span><span class="p">:</span>
+            <span class="n">individual</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">inputs</span><span class="p">))</span>
+        <span class="n">individual</span><span class="o">.</span><span class="n">determine_active_nodes</span><span class="p">()</span>
+        <span class="n">individual</span><span class="o">.</span><span class="n">never_active</span> <span class="o">=</span> <span class="n">never_active</span>
+
+        <span class="k">return</span> <span class="n">individual</span>
+
+</div></div>
+<div class="viewcode-block" id="generate"><a class="viewcode-back" href="../code.html#evolution.generate">[docs]</a><span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    An ``Individual`` generator that will yield a never ending supply of</span>
+<span class="sd">    ``Individual`` objects that need to have their fitness set before the</span>
+<span class="sd">    next ``Individual`` can be yielded.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``config``: A dictionary containing all configuration information</span>
+<span class="sd">      required to generate initial individuals.  Should include values</span>
+<span class="sd">      for:</span>
+
+<span class="sd">      - All configuration information required to initialize an Individual.</span>
+<span class="sd">      - ``dag``: If DAG based individuals should be used.</span>
+<span class="sd">      - ``reorder``: If the parent should be reordered before making offspring.</span>
+<span class="sd">      - ``mutation_rate``: The probably to use for mutation.</span>
+<span class="sd">      - ``off_size``: The number of offspring to produce per generation.</span>
+<span class="sd">      - ``output_length``: The number of output variables.</span>
+<span class="sd">      - ``max_arity``: The maximum arity used by any function.</span>
+<span class="sd">      - ``duplicate``: String specifying the way to handle duplicate</span>
+<span class="sd">        individual creation, either ``normal&#39;&#39;, ``skip&#39;&#39;, ``accumulate``, or</span>
+<span class="sd">        ``single``.</span>
+<span class="sd">      - ``problem``: The problem these individuals are solving.  Used on in</span>
+<span class="sd">        the case where problems require unusual individual modification.</span>
+<span class="sd">    - ``output``: Dictionary used to return information about evolution, will</span>
+<span class="sd">      send out:</span>
+
+<span class="sd">      - ``skipped``: The number of evaluations skipped by ``Skip``.</span>
+<span class="sd">      - ``estimated``: The estimated number of evaluations that are skippable.</span>
+<span class="sd">      - ``inactive_bits_changed``: Keeps track of nodes that were active, became</span>
+<span class="sd">        inactive, and have become active again, looking at how many bits in their</span>
+<span class="sd">        semantics have changed.  Is a dictionary of frequencies mapping change -&gt; count.</span>
+<span class="sd">      - ``reactiveated_nodes``: Counts the number of nodes that were active,</span>
+<span class="sd">        became inactive, and have become active again.</span>
+<span class="sd">      - ``active_nodes_changed``: Counts how many nodes that were active before and</span>
+<span class="sd">        after mutation had at least one bit in their semantics change.  Is a dictionary</span>
+<span class="sd">        mapping number changed in a single mutation -&gt; count.</span>
+<span class="sd">      - ``active_bits_changed``: Counts how many bits were changed when an active</span>
+<span class="sd">        node was changed by mutation but remained active.</span>
+<span class="sd">      - ``child_replaced_parent``: Counts how often the parent is replaced by the offspring.</span>
+<span class="sd">      - ``parent_not_replaced``: Counts how often no offspring in a generation replaced the parent.</span>
+<span class="sd">    - ``frequencies``:  Dictionary used to return information about how often</span>
+<span class="sd">      individuals of different lengths are evolved.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;skipped&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;estimated&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;inactive_bits_changed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;reactivated_nodes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;active_nodes_changed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;active_bits_changed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;child_replaced_parent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">output</span><span class="p">[</span><span class="s">&#39;parent_not_replaced&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;ordering&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;dag&#39;</span><span class="p">:</span>
+        <span class="c"># Override base functions with dag versions</span>
+        <span class="n">Individual</span><span class="o">.</span><span class="n">determine_active_nodes</span> <span class="o">=</span> \
+        <span class="n">Individual</span><span class="o">.</span><span class="n">dag_determine_active_nodes</span>
+        <span class="n">Individual</span><span class="o">.</span><span class="n">random_gene</span> <span class="o">=</span> \
+        <span class="n">Individual</span><span class="o">.</span><span class="n">dag_random_gene</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;duplicate&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;single&#39;</span><span class="p">:</span>
+        <span class="c"># Override normal mutation with Single</span>
+        <span class="n">Individual</span><span class="o">.</span><span class="n">mutate</span> <span class="o">=</span> <span class="n">Individual</span><span class="o">.</span><span class="n">one_active_mutation</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;problem&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;Flat&#39;</span><span class="p">:</span>
+        <span class="c"># Override normal method for determining active genes</span>
+        <span class="n">Individual</span><span class="o">.</span><span class="n">determine_active_nodes</span> <span class="o">=</span> <span class="n">Individual</span><span class="o">.</span><span class="n">all_active</span>
+    <span class="n">parent</span> <span class="o">=</span> <span class="n">Individual</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+    <span class="c"># Evaluate initial individual</span>
+    <span class="k">yield</span> <span class="n">parent</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;ordering&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;reorder&#39;</span><span class="p">:</span>
+            <span class="c"># Reorder the parent</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">reorder</span><span class="p">()</span>
+        <span class="c"># Create mutant offspring</span>
+        <span class="n">mutants</span> <span class="o">=</span> <span class="p">[</span><span class="n">parent</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">Individual</span><span class="o">.</span><span class="n">mutate</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;mutation_rate&#39;</span><span class="p">])</span>
+                   <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;off_size&#39;</span><span class="p">])]</span>
+        <span class="c"># Determine how many active genes the parent has</span>
+        <span class="n">active</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;output_length&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">active</span><span class="p">)</span> <span class="o">*</span>
+                                            <span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;max_arity&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">mutant</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mutants</span><span class="p">):</span>
+            <span class="c"># Estimates the probability none of the active genes were changed.</span>
+            <span class="n">output</span><span class="p">[</span><span class="s">&#39;estimated&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;mutation_rate&#39;</span><span class="p">])</span> <span class="o">**</span> <span class="n">active</span>
+            <span class="n">prev</span> <span class="o">=</span> <span class="n">mutant</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;duplicate&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;normal&#39;</span><span class="p">,</span> <span class="s">&#39;single&#39;</span><span class="p">]:</span>
+                <span class="n">change</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">asym_phenotypic_difference</span><span class="p">(</span><span class="n">mutant</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">change</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">output</span><span class="p">[</span><span class="s">&#39;skipped&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;duplicate&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;skip&#39;</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;duplicate&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;accumulate&#39;</span><span class="p">:</span>
+                        <span class="k">while</span> <span class="n">change</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="c"># As long as there have been no changes,</span>
+                            <span class="c"># keep mutating</span>
+                            <span class="n">prev</span> <span class="o">=</span> <span class="n">mutant</span>
+                            <span class="n">mutant</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">Individual</span><span class="o">.</span><span class="n">mutate</span><span class="p">,</span>
+                                              <span class="n">config</span><span class="p">[</span><span class="s">&#39;mutation_rate&#39;</span><span class="p">])</span>
+                            <span class="n">change</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">asym_phenotypic_difference</span><span class="p">(</span><span class="n">mutant</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s">&#39;frequency_results&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+                <span class="c"># Records the length of the generated individual</span>
+                <span class="n">frequencies</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">mutant</span><span class="o">.</span><span class="n">active</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c"># Send the offspring out to be evaluated</span>
+            <span class="k">yield</span> <span class="n">mutant</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;duplicate&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;accumulate&#39;</span><span class="p">:</span>
+                <span class="c"># If the mutant is strickly worse, use the last equivalent</span>
+                <span class="n">mutants</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">prev</span> <span class="k">if</span> <span class="n">mutant</span> <span class="o">&lt;</span> <span class="n">parent</span> <span class="k">else</span> <span class="n">mutant</span>
+        <span class="n">best_child</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">mutants</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">parent</span> <span class="o">&lt;=</span> <span class="n">best_child</span><span class="p">:</span>
+            <span class="n">parent_active</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">active</span><span class="p">)</span>
+            <span class="n">re_active</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">active_changed</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">newly_active</span> <span class="ow">in</span> <span class="n">best_child</span><span class="o">.</span><span class="n">active</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">parent</span><span class="o">.</span><span class="n">never_active</span><span class="p">[</span><span class="n">newly_active</span><span class="p">]:</span>
+                    <span class="c"># You can&#39;t get change information if its never</span>
+                    <span class="c"># been evaluated before.</span>
+                    <span class="k">continue</span>
+                <span class="c"># Determine how the semantics have changed</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">newly_active</span><span class="p">]</span>
+                <span class="n">now</span> <span class="o">=</span> <span class="n">best_child</span><span class="o">.</span><span class="n">semantics</span><span class="p">[</span><span class="n">newly_active</span><span class="p">]</span>
+                <span class="n">change</span> <span class="o">=</span> <span class="n">bitcount</span><span class="p">(</span><span class="n">now</span> <span class="o">^</span> <span class="n">prev</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">newly_active</span> <span class="ow">in</span> <span class="n">parent_active</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">change</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">active_changed</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">output</span><span class="p">[</span><span class="s">&#39;active_bits_changed&#39;</span><span class="p">][</span><span class="n">change</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c"># Was inactive in parent</span>
+                    <span class="n">re_active</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">output</span><span class="p">[</span><span class="s">&#39;inactive_bits_changed&#39;</span><span class="p">][</span><span class="n">change</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">output</span><span class="p">[</span><span class="s">&#39;reactivated_nodes&#39;</span><span class="p">][</span><span class="n">re_active</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">output</span><span class="p">[</span><span class="s">&#39;active_nodes_changed&#39;</span><span class="p">][</span><span class="n">active_changed</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">output</span><span class="p">[</span><span class="s">&#39;child_replaced_parent&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c"># Replace the parent with the child</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="n">best_child</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span><span class="p">[</span><span class="s">&#39;parent_not_replaced&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+</div>
+<div class="viewcode-block" id="multi_indepenedent"><a class="viewcode-back" href="../code.html#evolution.multi_indepenedent">[docs]</a><span class="k">def</span> <span class="nf">multi_indepenedent</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Allows for multiple parallel independent populations to be evolved</span>
+<span class="sd">    at the same time.  Will generate one individual from each population</span>
+<span class="sd">    before repeating a population.  Not used in the paper ``Analysis of</span>
+<span class="sd">    Cartesian Genetic Programming&#39;s Evolutionary Mechanisms.``</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``config``: A dictionary containing all of the configuration information</span>
+<span class="sd">      required to generate multiple populations worth of individuals.  Should</span>
+<span class="sd">      include values for:</span>
+
+<span class="sd">      - All configuration information required by ``generate``.</span>
+<span class="sd">      - ``pop_size``: The number of parallel populations to use.</span>
+<span class="sd">    - ``output``:  Used to return information about evolution.  Shared by all</span>
+<span class="sd">      parallel populations.  Will contain all information output by</span>
+<span class="sd">      ``generate``.</span>
+<span class="sd">    - ``frequencies``:  Dictionary used to return information about how often</span>
+<span class="sd">      individuals of different lengths are evolved.  Shared by all parallel</span>
+<span class="sd">      populations.  Will contain all information output by ``generate``.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">collective</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">izip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">generate</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">)</span>
+                                  <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;pop_size&#39;</span><span class="p">])])</span>
+    <span class="k">for</span> <span class="n">next_iterations</span> <span class="ow">in</span> <span class="n">collective</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">next_iteration</span> <span class="ow">in</span> <span class="n">next_iterations</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">next_iteration</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Brian W. Goldman.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

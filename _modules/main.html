@@ -1,0 +1,377 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>main &mdash; Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for main</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">This module is intended to duplicate the &#39;main()&#39; function found in other</span>
+<span class="sd">languages such as C++ and Java.  In order to run an experiment, this module</span>
+<span class="sd">should be passed to your interpreter.  In the interest of speed and consistency</span>
+<span class="sd">we suggest that PyPy 1.9.0 be used to run this code, although</span>
+<span class="sd">Python 2.7 should be able to handle it correctly.</span>
+
+<span class="sd">To see a full description of this modules command line arguments, run</span>
+<span class="sd">``pypy main.py -h``.</span>
+
+<span class="sd">Provided with this code should be the ``cfg`` folder which contains some</span>
+<span class="sd">configuration files useful for running experiments.  These files can be passed</span>
+<span class="sd">to main along with other configuration information in order to recreate</span>
+<span class="sd">the experiments performed in the paper ``Analysis of Cartesian Genetic Programming&#39;s</span>
+<span class="sd">Evolutionary Mechanisms``.  For example, the following command performs</span>
+<span class="sd">one run of the Parity problem using seed number 13 with a genome size of</span>
+<span class="sd">2000.  Also, verbose output is printed to the display,</span>
+<span class="sd">the ``reorder`` variant is used, and the results are output to output/test_run.dat.</span>
+
+<span class="sd">``pypy main.py cfg/once.cfg cfg/parity.cfg -seed 13 -g 200 -v -ordering reorder</span>
+<span class="sd">-out test_run.dat``</span>
+
+<span class="sd">For any support questions email brianwgoldman@acm.org.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">evolution</span> <span class="kn">import</span> <span class="n">Individual</span><span class="p">,</span> <span class="n">multi_indepenedent</span>
+<span class="kn">import</span> <span class="nn">problems</span>
+<span class="kn">import</span> <span class="nn">util</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+
+<div class="viewcode-block" id="one_run"><a class="viewcode-back" href="../code.html#main.one_run">[docs]</a><span class="k">def</span> <span class="nf">one_run</span><span class="p">(</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Performs a single run of the given configuration.  Returns a dictionary</span>
+<span class="sd">    containing results.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``evaluator``: An object with the function get_fitness that takes an</span>
+<span class="sd">      individual and returns its fitness value</span>
+<span class="sd">    - ``config``: A dictionary containing all of the configuration information</span>
+<span class="sd">      required to perform a experimental run, including:</span>
+
+<span class="sd">      - All information required to initialize an individual.</span>
+<span class="sd">      - All information required to run ``evolution.multi_independent``.</span>
+<span class="sd">      - ``verbose``: Boolean value for if extra runtime information should</span>
+<span class="sd">        be displayed.</span>
+<span class="sd">      - ``max_evals``: The maximum number of evaluations allowed before</span>
+<span class="sd">        termination.</span>
+<span class="sd">      - ``max_fitness``: The fitness required to cause a &quot;successful&quot;</span>
+<span class="sd">        termination.</span>
+<span class="sd">    - ``frequencies``:  Dictionary used to return information about how often</span>
+<span class="sd">      individuals of different lengths are evolved.  Set by evolution.generate.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">best</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">last_improved</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;bests&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="n">generator</span> <span class="o">=</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">multi_indepenedent</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">evals</span><span class="p">,</span> <span class="n">individual</span> <span class="ow">in</span> <span class="n">generator</span><span class="p">:</span>
+        <span class="n">individual</span><span class="o">.</span><span class="n">fitness</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">get_fitness</span><span class="p">(</span><span class="n">individual</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">best</span> <span class="o">&lt;</span> <span class="n">individual</span><span class="p">:</span>
+            <span class="n">best</span> <span class="o">=</span> <span class="n">individual</span>
+            <span class="n">last_improved</span> <span class="o">=</span> <span class="n">evals</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;record_bests&#39;</span><span class="p">]:</span>
+                <span class="n">save</span> <span class="o">=</span> <span class="n">best</span><span class="o">.</span><span class="n">dump</span><span class="p">()</span>
+                <span class="n">save</span><span class="p">[</span><span class="s">&#39;evals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">evals</span>
+                <span class="n">output</span><span class="p">[</span><span class="s">&#39;bests&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">save</span><span class="p">)</span>
+                <span class="n">output</span><span class="p">[</span><span class="s">&#39;test_inputs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">best</span><span class="o">.</span><span class="n">input_order</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
+                                               <span class="n">key</span><span class="o">=</span><span class="n">best</span><span class="o">.</span><span class="n">input_order</span><span class="o">.</span><span class="n">__getitem__</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;verbose&#39;</span><span class="p">]:</span>
+                <span class="k">print</span> <span class="s">&#39;</span><span class="se">\t</span><span class="s">&#39;</span><span class="p">,</span> <span class="n">last_improved</span><span class="p">,</span> <span class="n">best</span><span class="o">.</span><span class="n">fitness</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">best</span><span class="o">.</span><span class="n">active</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">evals</span> <span class="o">&gt;=</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;max_evals&#39;</span><span class="p">]</span> <span class="ow">or</span>
+            <span class="n">best</span><span class="o">.</span><span class="n">fitness</span> <span class="o">&gt;=</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;max_fitness&#39;</span><span class="p">]):</span>
+            <span class="k">break</span>
+    <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;verbose&#39;</span><span class="p">]:</span>
+        <span class="k">print</span> <span class="s">&quot;Best Found&quot;</span>
+        <span class="k">print</span> <span class="s">&#39;Before simplify&#39;</span><span class="p">,</span> <span class="n">best</span><span class="o">.</span><span class="n">fitness</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">best</span><span class="o">.</span><span class="n">active</span><span class="p">)</span>
+        <span class="n">best</span><span class="o">.</span><span class="n">show_active</span><span class="p">()</span>
+        <span class="n">simplified</span> <span class="o">=</span> <span class="n">best</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">Individual</span><span class="o">.</span><span class="n">simplify</span><span class="p">)</span>
+        <span class="n">simplified</span><span class="o">.</span><span class="n">fitness</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">get_fitness</span><span class="p">(</span><span class="n">simplified</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&quot;After simplify&quot;</span><span class="p">,</span> <span class="n">simplified</span><span class="o">.</span><span class="n">fitness</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">simplified</span><span class="o">.</span><span class="n">active</span><span class="p">)</span>
+        <span class="n">simplified</span><span class="o">.</span><span class="n">show_active</span><span class="p">()</span>
+    <span class="n">output</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s">&#39;fitness&#39;</span><span class="p">:</span> <span class="n">best</span><span class="o">.</span><span class="n">fitness</span><span class="p">,</span> <span class="s">&#39;evals&#39;</span><span class="p">:</span> <span class="n">evals</span><span class="p">,</span>
+                   <span class="s">&#39;success&#39;</span><span class="p">:</span> <span class="n">best</span><span class="o">.</span><span class="n">fitness</span> <span class="o">&gt;=</span> <span class="n">config</span><span class="p">[</span><span class="s">&#39;max_fitness&#39;</span><span class="p">],</span>
+                   <span class="s">&#39;phenotype&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">best</span><span class="o">.</span><span class="n">active</span><span class="p">),</span>
+                   <span class="s">&#39;normal&#39;</span><span class="p">:</span> <span class="n">output</span><span class="p">[</span><span class="s">&#39;skipped&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">evals</span><span class="p">,</span>
+                   <span class="s">&#39;unused&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">best</span><span class="o">.</span><span class="n">never_active</span><span class="p">)})</span>
+    <span class="k">return</span> <span class="n">output</span>
+
+</div>
+<div class="viewcode-block" id="all_runs"><a class="viewcode-back" href="../code.html#main.all_runs">[docs]</a><span class="k">def</span> <span class="nf">all_runs</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Perform all of the requested runs on a given problem.  Returns a two part</span>
+<span class="sd">    tuple:</span>
+
+<span class="sd">    - list of the dictionaries returned by ``one_run``.</span>
+<span class="sd">    - frequency information collected by ``one_run``.</span>
+
+<span class="sd">    Will give results for all</span>
+<span class="sd">    completed runs if a keyboard interrupt is received.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``config``: Dictionary containing all configuration information required</span>
+<span class="sd">      to perform all of the necessary runs of the experiment.  Should contain</span>
+<span class="sd">      values for:</span>
+
+<span class="sd">      - All configuration information needed by ``one_run``</span>
+<span class="sd">      - ``problem``: The name of which problem from the ``problem`` module to</span>
+<span class="sd">        run experiments on.</span>
+<span class="sd">      - ``runs``: How many runs to perform</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c"># Construct the problem object</span>
+    <span class="n">evaluator</span> <span class="o">=</span> <span class="n">problems</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;problem&#39;</span><span class="p">]](</span><span class="n">config</span><span class="p">)</span>
+    <span class="c"># Set configuration information from the problem</span>
+    <span class="n">config</span><span class="p">[</span><span class="s">&#39;function_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">operators</span>
+    <span class="n">config</span><span class="p">[</span><span class="s">&#39;max_arity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">max_arity</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">frequencies</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;runs&#39;</span><span class="p">]):</span>
+            <span class="k">print</span> <span class="s">&quot;Starting Run&quot;</span><span class="p">,</span> <span class="n">run</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">one_run</span><span class="p">(</span><span class="n">evaluator</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">)</span>
+            <span class="k">print</span> <span class="p">[(</span><span class="n">key</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;evals&#39;</span><span class="p">,</span> <span class="s">&#39;fitness&#39;</span><span class="p">]]</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&quot;Interrupted&quot;</span>
+    <span class="k">return</span> <span class="n">results</span><span class="p">,</span> <span class="n">frequencies</span>
+
+</div>
+<div class="viewcode-block" id="combine_results"><a class="viewcode-back" href="../code.html#main.combine_results">[docs]</a><span class="k">def</span> <span class="nf">combine_results</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Given a list of result dictionaries, return analysis information such as</span>
+<span class="sd">    the median values of each statistic as well as the median absolute</span>
+<span class="sd">    deviation.</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">    - ``results``: A list of dictionaries containing similar key values.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">combined</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c"># Collect the successful runs</span>
+    <span class="n">successful</span> <span class="o">=</span> <span class="p">[</span><span class="n">result</span> <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;success&#39;</span><span class="p">]]</span>
+    <span class="c"># Combine like keys across all runs</span>
+    <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">combined</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">combined</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span><span class="p">]</span>
+    <span class="c"># Analyze the values for each key</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">combined</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">combined</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">median_deviation</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">combined</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">combined</span><span class="p">[</span><span class="s">&#39;success&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">successful</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)),</span> <span class="mi">0</span>
+    <span class="k">except</span> <span class="ne">ZeroDivisionError</span><span class="p">:</span>
+        <span class="n">combined</span><span class="p">[</span><span class="s">&#39;success&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">combined</span>
+
+</div>
+<div class="viewcode-block" id="frequencies_to_vector"><a class="viewcode-back" href="../code.html#main.frequencies_to_vector">[docs]</a><span class="k">def</span> <span class="nf">frequencies_to_vector</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Returns a flattened version of the frequencies dictionary.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">frequencies</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;graph_length&#39;</span><span class="p">])]</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">argparse</span>
+    <span class="kn">import</span> <span class="nn">random</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+
+    <span class="c"># Set up argument parsing</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="s">&#39;Cartesian Genetic Programming.  In Python!&#39;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;configs&#39;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s">&#39;Configuration Files&#39;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s">&#39;+&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Zero or more json formatted files containing&#39;</span> <span class="o">+</span>
+                            <span class="s">&#39; configuration information&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-g&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;graph_length&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;The number of nodes in the CGP graph&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-m&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;mutation_rate&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Use the specified mutation rate.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-i&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;input_length&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;The number of input nodes in the CGP graph&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-o&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;output_length&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;The number of output nodes in the CGP graph&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-pop_size&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;pop_size&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Use the specified population size.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-seed&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;seed&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Use the specified random seed used&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-duplicate&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;duplicate&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Specifies if evolution should should avoid&#39;</span> <span class="o">+</span>
+                        <span class="s">&#39; duplicated evaluations.  Valid settings are: &#39;</span> <span class="o">+</span>
+                        <span class="s">&#39;normal, skip, accumulate, single&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-ordering&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;ordering&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Specifies how to handle node ordering.&#39;</span> <span class="o">+</span>
+                        <span class="s">&#39;  Valid settings are: &#39;</span> <span class="o">+</span>
+                        <span class="s">&#39;normal, reorder, dag&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-record_bests&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;record_bests&#39;</span><span class="p">,</span>
+                        <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Include this flag to record the full genome&#39;</span> <span class="o">+</span>
+                        <span class="s">&#39; of the first individual to reach each new fitness.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-c&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;output_config&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Outputs a single configuration file containing&#39;</span> <span class="o">+</span>
+                        <span class="s">&#39; the entire configuration used in this run&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-v&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;verbose&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Include this flag to increase periodic output&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-out&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;output_results&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Specify a file to output the results.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-freq&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;frequency_results&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Specify a file to output the frequency results.&#39;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s">&#39;-profile&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s">&#39;profile&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s">&#39;Include this flag to run a profiler&#39;</span><span class="p">)</span>
+
+    <span class="c"># Perform argument parsing</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">load_configurations</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">configs</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">[</span><span class="s">&#39;verbose&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span>
+    <span class="n">config</span><span class="p">[</span><span class="s">&#39;record_bests&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">record_bests</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">seed</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;seed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">seed</span>
+    <span class="k">elif</span> <span class="s">&#39;seed&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;seed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">maxint</span><span class="p">)</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s">&#39;seed&#39;</span><span class="p">])</span>
+
+    <span class="c"># Allow the command line to override configuration file specifications</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">graph_length</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;graph_length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">graph_length</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mutation_rate</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;mutation_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">mutation_rate</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">input_length</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;input_length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">input_length</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_length</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;output_length&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output_length</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pop_size</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;pop_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">pop_size</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">duplicate</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;duplicate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">duplicate</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ordering</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;ordering&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">ordering</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">frequency_results</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">config</span><span class="p">[</span><span class="s">&#39;frequency_results&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">frequency_results</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">profile</span><span class="p">:</span>
+        <span class="c"># When profiling, just run the configuration</span>
+        <span class="kn">import</span> <span class="nn">cProfile</span>
+        <span class="n">cProfile</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s">&quot;all_runs(config)&quot;</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c"># Perform the actual run of the experiment</span>
+        <span class="n">raw_results</span><span class="p">,</span> <span class="n">frequencies</span> <span class="o">=</span> <span class="n">all_runs</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">combined</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">combine_results</span><span class="p">(</span><span class="n">raw_results</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">print</span> <span class="n">combined</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_results</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Output the results, with the combined stuff on the first line</span>
+            <span class="n">util</span><span class="o">.</span><span class="n">save_list</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_results</span><span class="p">,</span> <span class="p">[</span><span class="n">combined</span><span class="p">]</span> <span class="o">+</span> <span class="n">raw_results</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_config</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Serialize function list</span>
+            <span class="n">config</span><span class="p">[</span><span class="s">&#39;function_list&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="n">__name__</span> <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span>
+                                       <span class="n">config</span><span class="p">[</span><span class="s">&#39;function_list&#39;</span><span class="p">]]</span>
+            <span class="c"># Saves the final configuration as a single file</span>
+            <span class="n">util</span><span class="o">.</span><span class="n">save_configuration</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_config</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">frequency_results</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># Saves the frequency information</span>
+            <span class="n">processed</span> <span class="o">=</span> <span class="n">frequencies_to_vector</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">frequencies</span><span class="p">)</span>
+            <span class="n">util</span><span class="o">.</span><span class="n">save_configuration</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">frequency_results</span><span class="p">,</span> <span class="n">processed</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">print</span> <span class="s">&#39;You must include a configuration value for&#39;</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../index.html">Analysis of Cartesian Genetic Programming’s Evolutionary Mechanisms 1.0 documentation</a> &raquo;</li>
+          <li><a href="index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Brian W. Goldman.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
