@@ -17,6 +17,10 @@ def diff_count(data1, data2):
 
 
 def open_file_method(filename):
+    '''
+    This chooses the proper way to open a file by examining its extension.
+    Returns the function to use, either "open" or "gzip"
+    '''
     extension = filename.split('.')[-1]
     if extension == 'gz':
         return gzip.open
@@ -123,85 +127,10 @@ def median_deviation(data, median=None):
     return  median, find_median([abs(x - median) for x in data])
 
 
-def resample_probability(i, k, n):
-    '''
-    Given ``k`` samples from ``n`` items, what is the probability that the
-    ``ith`` best element in the original set is the best found in the sample.
-
-    Parameters:
-
-    - ``i``: The index being predicted.
-    - ``k``: The sample size being drawn.
-    - ``n``: The number of items being drawn from.
-    '''
-    n = float(n)
-    not_i = (n - 1 - i) / (n - i)
-    one_or_more_i = 1 - not_i ** k
-    not_better = (n - i) / n
-    none_better = not_better ** k
-    return one_or_more_i * none_better
-
-
-def best_of_k(data, k, minimum=False):
-    '''
-    Given a set of data, predict what the expected best result of drawing
-    ``k`` samples from the same distribution.
-
-    Parameters
-
-    - ``data``: The set of data drawn from the distribution being analyzed.
-    - ``k``: The number of samples to be drawn from the distribution.
-    - ``minimum``: Specifies if you want the worst of k instead of the best.
-    '''
-    return sum(resample_probability(i, k, len(data)) * v
-               for i, v in enumerate(sorted(data, reverse=minimum)))
-
-
-def wilcoxon_signed_rank(d1, d2):
-    '''
-    Perform a statistical test paired data given in two data sets.  Returns
-    W, the number of non-identical pairs, the standard deviation of the
-    rankings, and finally the z value (which is only correct if the data
-    contains more than 10 non identical pairs).
-    '''
-    non_zero_diff = [(x1 - y1) for x1, y1 in zip(d1, d2) if (x1 - y1) != 0]
-    non_zero_diff.sort(key=abs)
-    rank = 0
-    pairs = len(non_zero_diff)
-    total = 0
-    while rank < pairs:
-        identical = rank + 1
-        signs = cmp(non_zero_diff[rank], 0)
-        while (identical < pairs and
-               abs(non_zero_diff[rank]) == abs(non_zero_diff[identical])):
-            signs += cmp(non_zero_diff[identical], 0)
-            identical += 1
-        identical -= 1
-        average_rank = (identical - rank) / 2.0 + rank + 1
-        total += average_rank * signs
-        rank = identical + 1
-    std = math.sqrt((pairs * (pairs + 1) * (2 * pairs + 1)) / 6)
-    try:
-        if total > 0:
-            use = -0.5
-        else:
-            use = 0.5
-        z = (total + use) / std
-    except ZeroDivisionError:
-        z = 0
-    return abs(total), pairs, std, z
-
-
-def entropy(data):
-    unique = defaultdict(int)
-    for d in data:
-        unique[d] += 1
-    total = float(len(data))
-    return -sum((count / total) * math.log(count / total, 2)
-                for count in unique.values())
-
-
 def bitcount(integer):
+    '''
+    Counts the number of set bits in an integer
+    '''
     return bin(integer).count('1')
 
 
@@ -214,7 +143,6 @@ def set_fonts():
     import matplotlib
     matplotlib.rcParams['ps.useafm'] = True
     matplotlib.rcParams['pdf.use14corefonts'] = True
-    matplotlib.rcParams['text.usetex'] = True
     matplotlib.pyplot.figure(figsize=(5, 5))
 
 # Generator used when plotting to cylce through the different line styles

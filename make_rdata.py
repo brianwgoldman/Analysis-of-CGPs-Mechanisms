@@ -3,7 +3,7 @@ This will parse through all files in the final folder and produce
 R parsable output for use in analysis.  Run as a stand alone
 executable in the form of:
 
-python make_r.py final/*.dat.gz > rdata.csv
+python make_rdata.py final/*.dat.gz > rdata.csv
 '''
 from __future__ import print_function
 import sys
