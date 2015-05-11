@@ -17,4 +17,4 @@ To statistically compare data, use stats.py on "final" data.
 To look at semantic behavior, use bit_behavior.py on "final" data.
 To recreate the rdata.csv file from raw, use make_rdata.py on "final" data.
 To create the never active plots, use never_actives.py on "final" data.
-https://zenodo.org/badge/doi/10.5281/zenodo.17493.svg
+![DOI image](https://zenodo.org/badge/doi/10.5281/zenodo.17493.svg)
